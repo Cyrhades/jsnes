@@ -53,11 +53,12 @@ export default class Browser {
         // or if requestAnimationFrame is not running, to avoid double-stepping
         // frames and accelerating audio when the tab is active.
         const isHidden = typeof document !== "undefined" && document.hidden;
-        const isTimerInactive =
-          !this._frameTimer || !this._frameTimer.running;
+        const isTimerInactive = !this._frameTimer || !this._frameTimer.running;
 
         if (isHidden || isTimerInactive) {
-          debug("Buffer underrun in background/inactive state, running extra frames");
+          debug(
+            "Buffer underrun in background/inactive state, running extra frames",
+          );
           this._frameTimer?.generateFrame();
           this._frameTimer?.generateFrame();
         }

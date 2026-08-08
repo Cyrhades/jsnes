@@ -77,8 +77,14 @@ class Mapper64 extends Mapper4 {
         this.r0 = arg;
         if (this.kBit === 0) {
           // 2KB mode
-          this.load1kVromBank(arg & ~1, this.chrAddressSelect ? 0x1000 : 0x0000);
-          this.load1kVromBank((arg & ~1) + 1, this.chrAddressSelect ? 0x1400 : 0x0400);
+          this.load1kVromBank(
+            arg & ~1,
+            this.chrAddressSelect ? 0x1000 : 0x0000,
+          );
+          this.load1kVromBank(
+            (arg & ~1) + 1,
+            this.chrAddressSelect ? 0x1400 : 0x0400,
+          );
         } else {
           // 1KB mode
           this.load1kVromBank(arg, this.chrAddressSelect ? 0x1000 : 0x0000);
@@ -89,8 +95,14 @@ class Mapper64 extends Mapper4 {
         this.r1 = arg;
         if (this.kBit === 0) {
           // 2KB mode
-          this.load1kVromBank(arg & ~1, this.chrAddressSelect ? 0x1800 : 0x0800);
-          this.load1kVromBank((arg & ~1) + 1, this.chrAddressSelect ? 0x1c00 : 0x0c00);
+          this.load1kVromBank(
+            arg & ~1,
+            this.chrAddressSelect ? 0x1800 : 0x0800,
+          );
+          this.load1kVromBank(
+            (arg & ~1) + 1,
+            this.chrAddressSelect ? 0x1c00 : 0x0c00,
+          );
         } else {
           // 1KB mode
           this.load1kVromBank(arg, this.chrAddressSelect ? 0x1800 : 0x0800);

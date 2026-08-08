@@ -4,6 +4,22 @@ A modern JavaScript NES (Nintendo Entertainment System) emulator library and web
 
 This project is a fork based on the original work by Ben Firshman: [bfirsh/jsnes](https://github.com/bfirsh/jsnes).
 
+
+---
+
+## Emulation improvements
+
+
+| Index (Original) | Index (Fork) |
+|:---:|:---:|
+| ![index original](./images/index_jsnes_original.jpg) | ![index fork](./images/index_jsnes_cyrhades_fork.png) |
+| Gremlins 2 (Original) | Gremlins 2 (Fork) |
+| ![gremlins2 original](./images/gremlins2_jsnes_original.jpg) | ![gremlins2 fork](./images/gremlins2_jsnes_cyrhades_fork.png) |
+| Tiny Toon (Original) | Tiny Toon (Fork) |
+| ![tinytoons original](./images/tinytoons_jsnes_original.jpg) | ![tinytoon fork](./images/tinytoon_jsnes_cyrhades_fork.png) |
+| Turtles 2 (Original) | Turtles 2 (Fork) |
+| ![turtles2 original](./images/turtles2_jsnes_original.jpg) | ![turtles2 fork](./images/turtles2_jsnes_cyrhades_fork.png) |
+
 ---
 
 ## Features and Improvements
@@ -37,6 +53,19 @@ This fork introduces significant technical enhancements, new mapper support, aud
 - **Screenshot Capture**: Download instant 256x240 PNG screenshots during gameplay.
 - **ZIP Pack Library**: Multi-ROM ZIP files can be saved to "Ma bibliothèque locale" as ZIP Packs and re-opened at any time.
 - **Non-blocking Modal Rendering**: Progressive background thumbnail queue for instant popup opening without UI freezing.
+
+---
+
+## Installation
+
+> git clone https://github.com/Cyrhades/jsnes
+
+> cd jsnes/web
+
+> npm install
+
+> npm run dev
+
 
 ---
 

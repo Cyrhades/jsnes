@@ -155,15 +155,24 @@ class ROM {
       this.mapperType &= 0xf; // Ignore byte 7
     }
 
-    // Default NES 2.0 fields to zero for iNES 1.0 ROMs so consumers
-    // don't need to check isNES2 before accessing them.
     this.subMapper = 0;
     this.prgRamSize = 0;
     this.prgNvRamSize = 0;
     this.chrRamSize = 0;
     this.chrNvRamSize = 0;
-    this.timingMode = 0;
     this.consoleType = 0;
+
+    // Detect PAL timing from iNES 1.0 header:
+    //   byte 9 bit 0 = 1 (PAL)
+    //   byte 10 bits 1..0 = 2 (PAL)
+    if (
+      !foundError &&
+      ((this.header[9] & 1) !== 0 || (this.header[10] & 3) === 2)
+    ) {
+      this.timingMode = 1; // PAL
+    } else {
+      this.timingMode = 0; // NTSC
+    }
   }
 
   // Parse NES 2.0 header fields (bytes 4-15).
@@ -244,6 +253,10 @@ class ROM {
       return this.HORIZONTAL_MIRRORING;
     }
     return this.VERTICAL_MIRRORING;
+  }
+
+  isPal() {
+    return this.timingMode === 1;
   }
 
   mapperSupported() {

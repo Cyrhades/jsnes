@@ -162,9 +162,22 @@ class NES {
 
     this.reset();
     this.mmap = this.rom.createMapper();
-    this.mmap.loadROM();
+
+    // Apply header-based mirroring BEFORE loadROM() so mappers that control
+    // their own mirroring (e.g. AxROM/Mapper7, MMC1/Mapper1) can override it
+    // inside their loadROM(). Previously this was called AFTER loadROM(), which
+    // caused mapper7's SINGLESCREEN_MIRRORING init to be overwritten by the
+    // header value (HORIZONTAL_MIRRORING), breaking games like Digger T. Rock.
     this.ppu.setMirroring(this.rom.getMirroringType());
+
+    this.mmap.loadROM();
     this.romData = data;
+
+    if (this.rom.isPal()) {
+      this.setFramerate(50);
+    } else {
+      this.setFramerate(60);
+    }
   }
 
   // Adjust audio sample timing for a non-standard host frame rate. At the

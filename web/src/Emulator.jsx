@@ -33,6 +33,13 @@ class Emulator extends Component {
         romData: this.props.romData,
         onError: this.props.onError,
       });
+      if (
+        this.props.unlimitedSprites !== undefined &&
+        this.browser.nes &&
+        this.browser.nes.ppu
+      ) {
+        this.browser.nes.ppu.removeSpriteLimit = this.props.unlimitedSprites;
+      }
     } catch (e) {
       if (this.props.onError) {
         this.props.onError(e);
@@ -53,6 +60,14 @@ class Emulator extends Component {
       } else {
         this.browser.start();
       }
+    }
+    if (
+      this.props.unlimitedSprites !== prevProps.unlimitedSprites &&
+      this.browser &&
+      this.browser.nes &&
+      this.browser.nes.ppu
+    ) {
+      this.browser.nes.ppu.removeSpriteLimit = this.props.unlimitedSprites;
     }
   }
 

@@ -67,8 +67,18 @@ class ListPage extends Component {
           {/* Header Hero */}
           <header className="text-center space-y-4 pt-4">
             <div className="inline-flex items-center space-x-2 px-4 py-1.5 rounded-full bg-indigo-950/80 border border-indigo-500/30 text-indigo-300 text-xs font-semibold uppercase tracking-wider glow-indigo">
-              <svg className="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
+              <svg
+                className="w-4 h-4 text-indigo-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"
+                />
               </svg>
               <span>Émulateur NES JavaScript</span>
             </div>
@@ -77,7 +87,15 @@ class ListPage extends Component {
             </h1>
             <p className="max-w-xl mx-auto text-slate-400 text-sm sm:text-base leading-relaxed">
               Jouez à vos jeux Nintendo NES directement dans votre navigateur.
-              Glissez-déposez n'importe quel fichier <code className="text-indigo-300 bg-slate-800 px-1.5 py-0.5 rounded">.nes</code> ou <code className="text-indigo-300 bg-slate-800 px-1.5 py-0.5 rounded">.zip</code>.
+              Glissez-déposez n'importe quel fichier{" "}
+              <code className="text-indigo-300 bg-slate-800 px-1.5 py-0.5 rounded">
+                .nes
+              </code>{" "}
+              ou{" "}
+              <code className="text-indigo-300 bg-slate-800 px-1.5 py-0.5 rounded">
+                .zip
+              </code>
+              .
             </p>
             <div className="pt-2">
               <a
@@ -109,15 +127,26 @@ class ListPage extends Component {
               className="hidden"
             />
             <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-indigo-600/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 group-hover:scale-110 group-hover:bg-indigo-600/20 transition-all">
-              <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+              <svg
+                className="w-7 h-7"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+                />
               </svg>
             </div>
             <h3 className="text-lg font-bold text-white mb-1 group-hover:text-indigo-300 transition-colors">
               Glissez-déposez votre ROM ou Pack ZIP ici
             </h3>
             <p className="text-xs text-slate-400 mb-4">
-              Formats pris en charge : <strong>.nes</strong> ou archives <strong>.zip</strong> (mono et multi-ROMs)
+              Formats pris en charge : <strong>.nes</strong> ou archives{" "}
+              <strong>.zip</strong> (mono et multi-ROMs)
             </p>
             <button
               type="button"
@@ -130,9 +159,24 @@ class ListPage extends Component {
           {/* Demo ROMs Grid */}
           <section className="space-y-4">
             <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center space-x-2">
-              <svg className="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              <svg
+                className="w-4 h-4 text-indigo-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"
+                />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
               </svg>
               <span>Jeux de démonstration</span>
             </h2>
@@ -147,7 +191,9 @@ class ListPage extends Component {
                   return (
                     <div
                       key={key}
-                      onClick={() => this.navigateToPath("/run/" + encodeURIComponent(key))}
+                      onClick={() =>
+                        this.navigateToPath("/run/" + encodeURIComponent(key))
+                      }
                       className="group glass-panel rounded-xl p-4 border border-slate-800 hover:border-indigo-500/50 hover:bg-slate-900/80 transition-all duration-200 flex flex-col justify-between shadow-md hover:shadow-indigo-500/20 hover:-translate-y-0.5 cursor-pointer"
                     >
                       <div className="space-y-3">
@@ -159,8 +205,18 @@ class ListPage extends Component {
                               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                             />
                           ) : (
-                            <svg className="w-10 h-10 text-slate-700 group-hover:text-indigo-400/60 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 002 2h14a2 2 0 002-2V7a2 2 0 00-2-2H5z" />
+                            <svg
+                              className="w-10 h-10 text-slate-700 group-hover:text-indigo-400/60 transition-colors"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth="1.5"
+                                d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 002 2h14a2 2 0 002-2V7a2 2 0 00-2-2H5z"
+                              />
                             </svg>
                           )}
                           <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-transparent to-transparent opacity-60 group-hover:opacity-30 transition-opacity" />
@@ -193,10 +249,22 @@ class ListPage extends Component {
             <section className="space-y-4 pt-4 border-t border-slate-900">
               <div className="flex items-center justify-between">
                 <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center space-x-2">
-                  <svg className="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                  <svg
+                    className="w-4 h-4 text-purple-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
+                    />
                   </svg>
-                  <span>Ma bibliothèque locale ({this.state.romLibrary.length})</span>
+                  <span>
+                    Ma bibliothèque locale ({this.state.romLibrary.length})
+                  </span>
                 </h2>
               </div>
 
@@ -213,8 +281,18 @@ class ListPage extends Component {
                         <div className="w-full h-36 bg-slate-950 rounded-lg overflow-hidden border border-slate-800 relative flex items-center justify-center">
                           {rom.isPack ? (
                             <div className="w-full h-full bg-indigo-950/40 border border-indigo-500/30 flex flex-col items-center justify-center p-4 text-center">
-                              <svg className="w-10 h-10 text-indigo-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M5 8h14M5 8a2 2 0 01-2-2V5a2 2 0 012-2h14a2 2 0 012 2v1a2 2 0 01-2 2M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+                              <svg
+                                className="w-10 h-10 text-indigo-400 mb-2"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth="1.5"
+                                  d="M5 8h14M5 8a2 2 0 01-2-2V5a2 2 0 012-2h14a2 2 0 012 2v1a2 2 0 01-2 2M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"
+                                />
                               </svg>
                               <span className="text-xs font-extrabold uppercase tracking-widest text-indigo-300 bg-indigo-900/80 border border-indigo-700 px-2.5 py-1 rounded-md">
                                 PACK • {rom.romCount || 0} JEUX
@@ -227,8 +305,18 @@ class ListPage extends Component {
                               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                             />
                           ) : (
-                            <svg className="w-10 h-10 text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 002 2h14a2 2 0 002-2V7a2 2 0 00-2-2H5z" />
+                            <svg
+                              className="w-10 h-10 text-slate-700"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth="1.5"
+                                d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 002 2h14a2 2 0 002-2V7a2 2 0 00-2-2H5z"
+                              />
                             </svg>
                           )}
                         </div>
@@ -264,7 +352,11 @@ class ListPage extends Component {
                       </button>
 
                       <div className="mt-4 pt-3 border-t border-slate-800/80 flex items-center justify-between text-xs text-purple-400 font-semibold group-hover:text-purple-300">
-                        <span>{rom.isPack ? "Ouvrir le Pack ZIP" : "Jouer maintenant"}</span>
+                        <span>
+                          {rom.isPack
+                            ? "Ouvrir le Pack ZIP"
+                            : "Jouer maintenant"}
+                        </span>
                         <span className="group-hover:translate-x-1 transition-transform">
                           &rsaquo;
                         </span>
