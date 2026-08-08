@@ -1,10 +1,11 @@
 Authors
 =======
 
- * Ben Firshman
+ Cyril LECOMTE 
 
 Thanks to:
-
+ 
+ * Ben Firshman - Original Author of JSNES
  * Jamie Sanders for vNES, the Java emulator that JSNES owes so much to.
  * Matt Westcott for JSSpeccy, the original inspiration for JSNES.
  * Connor Dunn for a patch that dramatically increased performance on Chrome.
