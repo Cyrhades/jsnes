@@ -54,6 +54,11 @@ class NES {
     this.fpsFrameCount = 0;
 
     this.crashed = false;
+
+    // Re-install Game Genie interception on the new CPU instance.
+    // reset() creates a fresh CPU whose loadFromCartridge points to the
+    // plain loader, so we must re-swap it if patches are active.
+    this.cpu._updateCartridgeLoader();
   }
 
   // The frame loop. PPU is advanced inline after every CPU bus operation
@@ -67,6 +72,7 @@ class NES {
     }
     this.controllers[1].clock();
     this.controllers[2].clock();
+    this.gameGenie.applyRamPatches(this.cpu);
     this.ppu.startFrame();
     let cycles;
     const cpu = this.cpu;

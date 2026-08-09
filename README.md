@@ -51,13 +51,48 @@ This fork introduces significant technical enhancements, new mapper support, aud
 - **Hybrid Input Remapping**: Remap buttons using either keyboard keys or physical controller buttons and analog axes.
 - **Reset Option**: One-click restoration of default control bindings.
 
-### 6. Modern Web UI
+### 6. Video Settings & Anti-Flicker (Unlimited Sprites)
+
+- **Real-Time Video Adjustments**: Live configuration popup for **Luminance**, **Saturation**, and **Gamma** via SVG component transfer filters.
+- **Anti-clignotement (Unlimited Sprites)**: Removes the NES hardware 8-sprites-per-scanline limit to prevent sprite flickering and disappearing sprites when multiple sprites align horizontally.
+- **Non-Overlay Live Preview**: Floating settings popup positioned to display real-time video modifications with automatic pause on open.
+
+### 7. Multi-Slot Save States System
+
+- **IndexedDB & LocalStorage Snapshotting**: Full state serialization (`toJSON` / `fromJSON`) across 3 save slots, storing exact CPU, PPU, APU, and mapper states alongside timestamps and instant screenshot previews.
+- **Universal Keyboard Shortcuts**:
+  - **Save**: `Ctrl + S` (Quick Save Slot 1) or `Ctrl + 1..3` (AZERTY `&`, `é`, `"`, Numpad `1..3`).
+  - **Load**: `Ctrl + Alt + L` / `Ctrl + Shift + L` (Quick Load Slot 1) or `Ctrl + Alt + 1..3` / `Ctrl + Shift + 1..3` (AZERTY `&`, `é`, `"`, Numpad `1..3`).
+- **Auto-Pause & Resume**: Emulation automatically pauses when the Save States modal opens and resumes playback instantly upon loading a state.
+
+### 8. Cartridge Hardware Inspector
+
+- **ROM & Hardware Info Modal**: Displays SHA-256 hash, title/game name, target region (NTSC-J, NTSC-U, PAL), system type (Regular / NES 2.0), board/mapper specifications (e.g. TENGEN-800032, RAMBO-1, VRC6), and PRG-ROM / CHR-ROM memory bank sizes.
+
+### 9. Console Hardware Reset & ROM Reload
+
+- **NES Reset Button**: One-click **Recharger la ROM** menu option simulating the physical NES console hardware reset button, re-initializing CPU, PPU, APU, and mapper registers from the ROM binary buffer.
+
+### 10. In-Browser Video & Audio Recording
+
+- **Canvas & Web Audio MediaRecorder**: Captures 60 FPS video from the NES canvas (`captureStream(60)`) merged with real-time Web Audio API sound (`AudioWorkletNode -> MediaStreamDestination`).
+- **Live On-Screen REC Indicator**: Glassmorphic `REC 🔴 00:15` overlay with live pulsing indicator and recording timer.
+- **Automatic Export**: One-click stop automatically generates and downloads a `.webm` video file.
+
+### 11. Game Genie Cheat Codes System
+
+- **Game Genie & Hex Patch Decoding**: Intercepts NES CPU ROM reads in real-time to substitute memory values based on standard 6-letter (e.g. `AAUNYLPA`) and 8-letter (e.g. `AEUTLZZA`) Game Genie codes or raw Hex memory patches (`$ADDR:$VAL`).
+- **Interactive Cheat Manager**: Modal dialog to add, label, toggle (ON/OFF), and delete cheat codes in real-time.
+- **Per-Game Storage**: Active cheat codes are automatically saved to `localStorage` per game title and restored on game launch.
+
+### 12. Modern Web UI & Navigation
 
 - Dark-mode arcade aesthetic with glassmorphism panels, glow effects, and custom scrollbars.
 - **CRT Scanlines Overlay**: Toggle vintage TV scanlines overlay filter.
-- **Screenshot Capture**: Download instant 256x240 PNG screenshots during gameplay.
+- **PNG Screenshot Capture**: Download instant 256x240 PNG screenshots during gameplay.
 - **ZIP Pack Library**: Multi-ROM ZIP files can be saved to "Ma bibliothèque locale" as ZIP Packs and re-opened at any time.
 - **Non-blocking Modal Rendering**: Progressive background thumbnail queue for instant popup opening without UI freezing.
+- **Clean Menu Navigation**: Organized menu sections with **Quitter** navigation link to exit back to the ROM Library.
 
 ---
 

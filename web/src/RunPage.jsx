@@ -9,6 +9,7 @@ import RomLibrary from "./RomLibrary";
 import SaveStatesModal from "./SaveStatesModal";
 import VideoSettingsModal from "./VideoSettingsModal";
 import ZipRomModal from "./ZipRomModal";
+import GameGenieModal from "./GameGenieModal";
 import { loadBinary, detectRomRegion } from "./utils";
 import { parseZip } from "../../src/zip-loader.js";
 import { idbGet, idbSet, idbRemove } from "./idbStorage.js";
@@ -56,6 +57,9 @@ class RunPage extends Component {
       controlsModalOpen: false,
       saveStatesModalOpen: false,
       cartridgeModalOpen: false,
+      gameGenieModalOpen: false,
+      cheatsEnabled: true,
+      cheatCodes: [],
       saveStateSlots: [],
       zipModalOpen: false,
       zipRoms: [],
@@ -333,6 +337,25 @@ class RunPage extends Component {
 
                     <button
                       onClick={() => {
+                        this.toggleGameGenieModal();
+                        this.closeMenu();
+                      }}
+                      className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium text-slate-200 hover:bg-slate-800/80 hover:text-white transition-all cursor-pointer bg-transparent border-0 text-left disabled:opacity-40"
+                      disabled={!this.state.romData || !!this.state.error}
+                    >
+                      <div className="flex items-center space-x-2.5">
+                        <img
+                          src="/img/game_genie.webp"
+                          alt="Game Genie"
+                          className="w-4 h-4 object-contain"
+                        />
+                        <span>Codes de triche (Game Genie)</span>
+                      </div>
+                      <span className="text-slate-500 text-xs">&rsaquo;</span>
+                    </button>
+
+                    <button
+                      onClick={() => {
                         this.takeScreenshot();
                         this.closeMenu();
                       }}
@@ -547,6 +570,10 @@ class RunPage extends Component {
                   onError={this.handleEmulatorError}
                   ref={(emulator) => {
                     this.emulator = emulator;
+                    if (emulator && !this._cheatsApplied) {
+                      this._cheatsApplied = true;
+                      this.applyCheatsToEngine();
+                    }
                   }}
                 />
               </div>
@@ -602,6 +629,19 @@ class RunPage extends Component {
             onClose={this.toggleCartridgeModal}
             romData={this.state.romData}
             romName={this.state.romName}
+          />
+
+          {/* Game Genie Cheat Codes Modal */}
+          <GameGenieModal
+            isOpen={this.state.gameGenieModalOpen}
+            onClose={this.toggleGameGenieModal}
+            codes={this.state.cheatCodes}
+            enabled={this.state.cheatsEnabled}
+            onToggleEnabled={this.handleToggleCheatsEnabled}
+            onAddCode={this.handleAddCheatCode}
+            onToggleCode={this.handleToggleCheatCode}
+            onDeleteCode={this.handleDeleteCheatCode}
+            onClearAll={this.handleClearAllCheatCodes}
           />
 
           {/* ZIP Multi-ROM Selection Modal */}
@@ -713,12 +753,15 @@ class RunPage extends Component {
       }
 
       if (zipResult.type === "single") {
-        this.setState({
-          running: true,
-          loading: false,
-          romData: zipResult.romData,
-          romName: zipResult.name || name || this.state.romName,
-        });
+        this.setState(
+          {
+            running: true,
+            loading: false,
+            romData: zipResult.romData,
+            romName: zipResult.name || name || this.state.romName,
+          },
+          () => this.loadCheats(),
+        );
         return;
       }
 
@@ -732,23 +775,29 @@ class RunPage extends Component {
       }
     }
 
-    this.setState({
-      running: true,
-      loading: false,
-      romData: data,
-      romName: name || this.state.romName,
-    });
+    this.setState(
+      {
+        running: true,
+        loading: false,
+        romData: data,
+        romName: name || this.state.romName,
+      },
+      () => this.loadCheats(),
+    );
   };
 
   handleSelectZipRom = (rom) => {
-    this.setState({
-      zipModalOpen: false,
-      zipRoms: [],
-      running: true,
-      loading: false,
-      romData: rom.data,
-      romName: rom.name,
-    });
+    this.setState(
+      {
+        zipModalOpen: false,
+        zipRoms: [],
+        running: true,
+        loading: false,
+        romData: rom.data,
+        romName: rom.name,
+      },
+      () => this.loadCheats(),
+    );
   };
 
   closeZipModal = () => {
@@ -1091,6 +1140,8 @@ class RunPage extends Component {
           paused: false,
           error: null,
         });
+        // Re-apply Game Genie codes after ROM reload
+        setTimeout(() => this.applyCheatsToEngine(), 50);
       } catch (e) {
         console.error("ROM reload failed:", e);
       }
@@ -1226,6 +1277,164 @@ class RunPage extends Component {
     } else {
       this.startVideoRecording();
     }
+  };
+
+  getCheatsKey = () => {
+    const slug = this.props.params.slug || "game";
+    return `jsnes_cheats_${slug}`;
+  };
+
+  loadCheats = () => {
+    this._cheatsApplied = false;
+    try {
+      const raw = localStorage.getItem(this.getCheatsKey());
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        const cheatCodes = parsed.codes || [];
+        const cheatsEnabled =
+          parsed.enabled !== undefined ? parsed.enabled : true;
+        this.setState({ cheatCodes, cheatsEnabled }, () => {
+          this._waitAndApplyCheats();
+        });
+        return;
+      }
+    } catch {}
+    this.setState({ cheatCodes: [], cheatsEnabled: true });
+  };
+
+  _waitAndApplyCheats = () => {
+    // Retry until the emulator ref is available (React renders async)
+    if (this.emulator && this.emulator.browser && this.emulator.browser.nes) {
+      this._cheatsApplied = true;
+      this.applyCheatsToEngine();
+    } else {
+      // Retry up to 2 seconds (40 x 50ms)
+      if (!this._cheatsRetryCount) this._cheatsRetryCount = 0;
+      this._cheatsRetryCount++;
+      if (this._cheatsRetryCount < 40) {
+        setTimeout(() => this._waitAndApplyCheats(), 50);
+      } else {
+        this._cheatsRetryCount = 0;
+      }
+    }
+  };
+
+  saveCheats = (cheatCodes, cheatsEnabled) => {
+    try {
+      localStorage.setItem(
+        this.getCheatsKey(),
+        JSON.stringify({ codes: cheatCodes, enabled: cheatsEnabled }),
+      );
+    } catch {}
+  };
+
+  applyCheatsToEngine = () => {
+    if (!this.emulator || !this.emulator.browser || !this.emulator.browser.nes)
+      return;
+    const nes = this.emulator.browser.nes;
+    nes.gameGenie.removeAllCodes();
+    nes.gameGenie.setEnabled(this.state.cheatsEnabled);
+
+    if (!this.state.cheatsEnabled) return;
+
+    let appliedCount = 0;
+    this.state.cheatCodes.forEach((item) => {
+      if (item.active) {
+        try {
+          nes.gameGenie.addCode(item.code);
+          appliedCount++;
+        } catch (e) {
+          console.warn("Failed to apply cheat code:", item.code, e);
+        }
+      }
+    });
+    if (appliedCount > 0) {
+      console.log(
+        `[Game Genie] ${appliedCount} code(s) applied, patches:`,
+        nes.gameGenie.patches.map((p) => ({
+          addr: "$" + p.addr.toString(16).toUpperCase().padStart(4, "0"),
+          val: "$" + p.value.toString(16).toUpperCase().padStart(2, "0"),
+          key:
+            p.key !== undefined
+              ? "$" + p.key.toString(16).toUpperCase().padStart(2, "0")
+              : "none",
+        })),
+      );
+    }
+  };
+
+  toggleGameGenieModal = () => {
+    this.setState((prev) => {
+      const nextOpen = !prev.gameGenieModalOpen;
+      if (nextOpen) {
+        return {
+          gameGenieModalOpen: true,
+          paused: true,
+          wasPausedBeforeGameGenieModal: prev.paused,
+        };
+      } else {
+        return {
+          gameGenieModalOpen: false,
+          paused: prev.wasPausedBeforeGameGenieModal || false,
+        };
+      }
+    });
+  };
+
+  handleAddCheatCode = (code, description) => {
+    if (!this.emulator || !this.emulator.browser || !this.emulator.browser.nes)
+      return false;
+    const nes = this.emulator.browser.nes;
+    const decoded = nes.gameGenie.decode(code);
+    if (!decoded) return false;
+
+    const newCodeItem = {
+      id: `cheat_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      code,
+      description,
+      active: true,
+      decoded,
+    };
+
+    const nextCodes = [...this.state.cheatCodes, newCodeItem];
+    this.setState({ cheatCodes: nextCodes }, () => {
+      this.saveCheats(nextCodes, this.state.cheatsEnabled);
+      this.applyCheatsToEngine();
+    });
+
+    return true;
+  };
+
+  handleToggleCheatCode = (id, active) => {
+    const nextCodes = this.state.cheatCodes.map((item) =>
+      item.id === id ? { ...item, active } : item,
+    );
+    this.setState({ cheatCodes: nextCodes }, () => {
+      this.saveCheats(nextCodes, this.state.cheatsEnabled);
+      this.applyCheatsToEngine();
+    });
+  };
+
+  handleDeleteCheatCode = (id) => {
+    const nextCodes = this.state.cheatCodes.filter((item) => item.id !== id);
+    this.setState({ cheatCodes: nextCodes }, () => {
+      this.saveCheats(nextCodes, this.state.cheatsEnabled);
+      this.applyCheatsToEngine();
+    });
+  };
+
+  handleToggleCheatsEnabled = (enabled) => {
+    this.setState({ cheatsEnabled: enabled }, () => {
+      this.saveCheats(this.state.cheatCodes, enabled);
+      this.applyCheatsToEngine();
+    });
+  };
+
+  handleClearAllCheatCodes = () => {
+    this.setState({ cheatCodes: [] }, () => {
+      this.saveCheats([], this.state.cheatsEnabled);
+      this.applyCheatsToEngine();
+    });
   };
 }
 

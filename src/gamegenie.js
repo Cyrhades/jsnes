@@ -16,6 +16,7 @@ function toHex(n, width) {
 class GameGenie {
   constructor() {
     this.patches = [];
+    this.ramPatches = [];
     this.enabled = true;
     // Callback invoked when patches or enabled state change, so the CPU
     // can swap its loadFromCartridge function pointer. Set by NES after
@@ -34,6 +35,9 @@ class GameGenie {
       throw new Error(`Invalid Game Genie code: ${code}`);
     }
     this.patches.push(patch);
+    if (patch.isRam) {
+      this.ramPatches.push(patch);
+    }
     if (this.onChange) this.onChange();
   }
 
@@ -44,6 +48,7 @@ class GameGenie {
 
   removeAllCodes() {
     this.patches = [];
+    this.ramPatches = [];
     if (this.onChange) this.onChange();
   }
 
@@ -67,10 +72,31 @@ class GameGenie {
     return value;
   }
 
+  // Apply RAM patches directly into CPU memory.
+  applyRamPatches(cpu) {
+    if (!this.enabled || this.ramPatches.length === 0) return;
+
+    for (let i = 0; i < this.ramPatches.length; ++i) {
+      const p = this.ramPatches[i];
+      const memAddr = p.fullAddr;
+      if (memAddr < 0x2000) {
+        if (p.key === undefined || cpu.mem[memAddr & 0x7ff] === p.key) {
+          cpu.mem[memAddr & 0x7ff] = p.value;
+        }
+      }
+    }
+  }
+
   decode(code) {
     if (code.includes(":")) return this.decodeHex(code);
+    if (code.includes("-")) return this.decodeDashHex(code);
 
-    const digits = code.toUpperCase().split("").map(toDigit);
+    const upper = code.toUpperCase();
+    if (upper.length !== 6 && upper.length !== 8) return null;
+
+    const digits = upper.split("").map(toDigit);
+    // toDigit returns -1 for invalid letters
+    if (digits.some((d) => d < 0)) return null;
 
     let value =
       ((digits[0] & 8) << 4) + ((digits[1] & 7) << 4) + (digits[0] & 7);
@@ -100,6 +126,28 @@ class GameGenie {
     return { value, addr, wantskey, key };
   }
 
+  decodeDashHex(s) {
+    const clean = s.replace(/\s/g, "").toUpperCase();
+    const match = clean.match(/^([0-9A-F]{4})-([0-9A-F]{2})([0-9A-F]{2})?$/);
+    if (!match) return null;
+
+    const fullAddr = parseInt(match[1], 16);
+    const value = parseInt(match[2], 16);
+    const compare = match[3] !== undefined ? parseInt(match[3], 16) : undefined;
+
+    const isRam = fullAddr < 0x8000;
+    const addr = isRam ? fullAddr : fullAddr & 0x7fff;
+
+    return {
+      value,
+      addr,
+      fullAddr,
+      wantskey: compare !== undefined,
+      key: compare,
+      isRam,
+    };
+  }
+
   encodeHex(addr, value, key, wantskey) {
     let s = toHex(addr, 4) + ":" + toHex(value, 2);
 
@@ -118,7 +166,7 @@ class GameGenie {
     const match = s.match(/([0-9a-fA-F]+):([0-9a-fA-F]+)(\?[0-9a-fA-F]*)?/);
     if (!match) return null;
 
-    const addr = parseInt(match[1], 16);
+    const fullAddr = parseInt(match[1], 16);
     const value = parseInt(match[2], 16);
     const wantskey = match[3] !== undefined;
     const key =
@@ -126,7 +174,10 @@ class GameGenie {
         ? parseInt(match[3].substring(1), 16)
         : undefined;
 
-    return { value, addr, wantskey, key };
+    const isRam = fullAddr < 0x8000;
+    const addr = isRam ? fullAddr : fullAddr & 0x7fff;
+
+    return { value, addr, fullAddr, wantskey, key, isRam };
   }
 
   encode(addr, value, key, wantskey) {

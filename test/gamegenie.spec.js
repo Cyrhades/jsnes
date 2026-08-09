@@ -58,6 +58,20 @@ describe("GameGenie", function () {
       assert.strictEqual(result.wantskey, true);
       assert.strictEqual(result.key, undefined);
     });
+
+    it("decodes a dash-separated hex code (RAM or ROM)", function () {
+      let ramResult = gg.decode("4A86-6F05");
+      assert.strictEqual(ramResult.fullAddr, 0x4a86);
+      assert.strictEqual(ramResult.value, 0x6f);
+      assert.strictEqual(ramResult.key, 0x05);
+      assert.strictEqual(ramResult.isRam, true);
+
+      let romResult = gg.decode("DF8C-070B");
+      assert.strictEqual(romResult.addr, 0x5f8c);
+      assert.strictEqual(romResult.value, 0x07);
+      assert.strictEqual(romResult.key, 0x0b);
+      assert.strictEqual(romResult.isRam, false);
+    });
   });
 
   describe("encode", function () {
