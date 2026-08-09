@@ -1,4 +1,5 @@
 import NES from "../../src/nes.js";
+import { idbGet, idbSet } from "./idbStorage.js";
 
 const memoryCache = new Map();
 
@@ -7,49 +8,46 @@ const memoryCache = new Map();
  */
 export function getCacheKey(romData, cacheKeyHint) {
   if (cacheKeyHint) return "thumb_" + cacheKeyHint;
-  let len = romData ? romData.length : 0;
+  let len = 0;
   let sampleSum = 0;
-  if (romData && len > 0) {
-    const isString = typeof romData === "string";
-    for (let i = 0; i < Math.min(len, 200); i += 5) {
-      const val = isString ? romData.charCodeAt(i) : romData[i];
-      sampleSum = (sampleSum + val) & 0xfffffff;
-    }
+  if (typeof romData === "string") {
+    len = romData.length;
+    sampleSum =
+      (romData.charCodeAt(0) || 0) +
+      (romData.charCodeAt(Math.floor(len / 2)) || 0) +
+      (romData.charCodeAt(len - 1) || 0);
+  } else if (romData && romData.length) {
+    len = romData.length;
+    sampleSum =
+      (romData[0] || 0) +
+      (romData[Math.floor(len / 2)] || 0) +
+      (romData[len - 1] || 0);
   }
-  return `thumb_${len}_${sampleSum}`;
+  return `thumb-${len}-${sampleSum}`;
 }
 
 /**
- * Check if a 256x240 frame buffer is mostly a single uniform color (e.g. black screen or copyright text on black).
- * @param {Int32Array} buffer - ARGB pixel buffer
- * @param {number} threshold - Fraction threshold (default: 0.85 = 85%)
- * @returns {boolean} True if the frame is dominated by a single background color
+ * Check if the rendering buffer is mostly monochrome/dark (e.g. intro splash screens).
  */
 export function isMostlyMonochrome(buffer, threshold = 0.85) {
   if (!buffer || buffer.length === 0) return true;
 
-  const colorCounts = new Map();
-  const totalPixels = buffer.length;
+  const firstPixel = buffer[0];
+  let sameCount = 0;
+  const total = buffer.length;
 
-  for (let i = 0; i < totalPixels; i++) {
-    const rgb = buffer[i] & 0x00ffffff;
-    const count = (colorCounts.get(rgb) || 0) + 1;
-    colorCounts.set(rgb, count);
-  }
-
-  let maxCount = 0;
-  for (const count of colorCounts.values()) {
-    if (count > maxCount) {
-      maxCount = count;
+  for (let i = 0; i < total; i++) {
+    if (buffer[i] === firstPixel) {
+      sameCount++;
     }
   }
 
-  return maxCount / totalPixels >= threshold;
+  return sameCount / total >= threshold;
 }
 
 /**
  * Generate a PNG Data URL thumbnail of a ROM's title screen.
- * Includes multi-layer caching (in-memory + localStorage) to avoid redundant emulation.
+ * Includes multi-layer caching (in-memory + IndexedDB) to avoid redundant emulation.
  *
  * @param {Uint8Array|string|ArrayBuffer} romData - Binary ROM data
  * @param {number} [initialFrames=60] - Number of initial frames (1 sec)
@@ -63,7 +61,7 @@ export function generateRomThumbnail(
   extendedFrames = 300,
   cacheKeyHint = "",
 ) {
-  return new Promise((resolve) => {
+  return new Promise(async (resolve) => {
     try {
       const cacheKey = getCacheKey(romData, cacheKeyHint);
 
@@ -73,16 +71,16 @@ export function generateRomThumbnail(
         return;
       }
 
-      // Check localStorage cache
+      // Check IndexedDB / localStorage cache
       try {
-        const cached = localStorage.getItem(cacheKey);
+        const cached = await idbGet(cacheKey);
         if (cached) {
           memoryCache.set(cacheKey, cached);
           resolve(cached);
           return;
         }
       } catch {
-        // localStorage unavailable/disabled
+        // storage unavailable
       }
 
       let lastFrameBuffer = null;
@@ -135,13 +133,9 @@ export function generateRomThumbnail(
       ctx.putImageData(imgData, 0, 0);
       const dataUrl = canvas.toDataURL("image/png");
 
-      // Save to memory and localStorage cache
+      // Save to memory and IndexedDB cache
       memoryCache.set(cacheKey, dataUrl);
-      try {
-        localStorage.setItem(cacheKey, dataUrl);
-      } catch {
-        // storage full or blocked
-      }
+      idbSet(cacheKey, dataUrl).catch(() => {});
 
       resolve(dataUrl);
     } catch (e) {

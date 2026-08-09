@@ -172,12 +172,11 @@ class NES {
 
     this.mmap.loadROM();
     this.romData = data;
+  }
 
-    if (this.rom.isPal()) {
-      this.setFramerate(50);
-    } else {
-      this.setFramerate(60);
-    }
+  setSampleRate(rate) {
+    this.opts.sampleRate = rate;
+    this.papu.setSampleRate(rate);
   }
 
   // Adjust audio sample timing for a non-standard host frame rate. At the

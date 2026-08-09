@@ -5,8 +5,9 @@ import config from "./config";
 import ControlsModal from "./ControlsModal";
 import Emulator from "./Emulator";
 import RomLibrary from "./RomLibrary";
+import VideoSettingsModal from "./VideoSettingsModal";
 import ZipRomModal from "./ZipRomModal";
-import { loadBinary } from "./utils";
+import { loadBinary, detectRomRegion } from "./utils";
 import { parseZip } from "../../src/zip-loader.js";
 
 function withParams(Component) {
@@ -23,12 +24,32 @@ function withParams(Component) {
 class RunPage extends Component {
   constructor(props) {
     super(props);
+
+    let savedVideoSettings = {
+      luminance: 100,
+      saturation: 100,
+      gamma: 1.0,
+      crtFilter: false,
+    };
+    try {
+      const saved = localStorage.getItem("jsnes_video_settings");
+      if (saved) {
+        savedVideoSettings = { ...savedVideoSettings, ...JSON.parse(saved) };
+      }
+    } catch {
+      // localStorage not available
+    }
+
     this.state = {
       romName: null,
       romData: null,
       running: false,
       paused: false,
-      crtFilter: false,
+      crtFilter: savedVideoSettings.crtFilter,
+      luminance: savedVideoSettings.luminance,
+      saturation: savedVideoSettings.saturation,
+      gamma: savedVideoSettings.gamma,
+      videoModalOpen: false,
       unlimitedSprites: true,
       controlsModalOpen: false,
       zipModalOpen: false,
@@ -176,38 +197,10 @@ class RunPage extends Component {
                   {/* Menu Group 2: Display & Graphics settings */}
                   <div className="py-1 space-y-0.5">
                     <button
-                      onClick={this.toggleUnlimitedSprites}
-                      className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium text-slate-200 hover:bg-slate-800/80 hover:text-white transition-all cursor-pointer bg-transparent border-0 text-left"
-                    >
-                      <div className="flex items-center space-x-2.5">
-                        <svg
-                          className="w-4 h-4 text-purple-400"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth="2"
-                            d="M13 10V3L4 14h7v7l9-11h-7z"
-                          />
-                        </svg>
-                        <span>Anti-clignotement</span>
-                      </div>
-                      <span
-                        className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
-                          this.state.unlimitedSprites
-                            ? "bg-purple-500/20 text-purple-300 border border-purple-500/30"
-                            : "bg-slate-800 text-slate-400 border border-slate-700"
-                        }`}
-                      >
-                        {this.state.unlimitedSprites ? "ON" : "OFF"}
-                      </span>
-                    </button>
-
-                    <button
-                      onClick={this.toggleCrtFilter}
+                      onClick={() => {
+                        this.toggleVideoModal();
+                        this.closeMenu();
+                      }}
                       className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium text-slate-200 hover:bg-slate-800/80 hover:text-white transition-all cursor-pointer bg-transparent border-0 text-left"
                     >
                       <div className="flex items-center space-x-2.5">
@@ -221,20 +214,24 @@ class RunPage extends Component {
                             strokeLinecap="round"
                             strokeLinejoin="round"
                             strokeWidth="2"
-                            d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 022 2z"
+                            d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
                           />
                         </svg>
-                        <span>Filtre CRT</span>
+                        <span>Réglages vidéo</span>
                       </div>
-                      <span
-                        className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
-                          this.state.crtFilter
-                            ? "bg-indigo-500/20 text-indigo-300 border border-indigo-500/30"
-                            : "bg-slate-800 text-slate-400 border border-slate-700"
-                        }`}
+                      <svg
+                        className="w-3.5 h-3.5 text-slate-400"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
                       >
-                        {this.state.crtFilter ? "ON" : "OFF"}
-                      </span>
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="2"
+                          d="M9 5l7 7-7 7"
+                        />
+                      </svg>
                     </button>
                   </div>
 
@@ -356,21 +353,47 @@ class RunPage extends Component {
               </div>
             </div>
           ) : this.state.romData ? (
-            <div
-              className={`relative w-full h-full flex items-center justify-center ${
-                this.state.crtFilter ? "crt-overlay" : ""
-              }`}
-            >
-              <Emulator
-                romData={this.state.romData}
-                paused={this.state.paused}
-                unlimitedSprites={this.state.unlimitedSprites}
-                onError={this.handleEmulatorError}
-                ref={(emulator) => {
-                  this.emulator = emulator;
+            <>
+              <svg
+                className="absolute w-0 h-0 overflow-hidden pointer-events-none"
+                aria-hidden="true"
+              >
+                <filter id="video-gamma-filter">
+                  <feComponentTransfer>
+                    <feFuncR
+                      type="gamma"
+                      exponent={1 / Math.max(0.01, this.state.gamma)}
+                    />
+                    <feFuncG
+                      type="gamma"
+                      exponent={1 / Math.max(0.01, this.state.gamma)}
+                    />
+                    <feFuncB
+                      type="gamma"
+                      exponent={1 / Math.max(0.01, this.state.gamma)}
+                    />
+                  </feComponentTransfer>
+                </filter>
+              </svg>
+              <div
+                className={`relative w-full h-full flex items-center justify-center ${
+                  this.state.crtFilter ? "crt-overlay" : ""
+                }`}
+                style={{
+                  filter: `brightness(${this.state.luminance}%) saturate(${this.state.saturation}%) url(#video-gamma-filter)`,
                 }}
-              />
-            </div>
+              >
+                <Emulator
+                  romData={this.state.romData}
+                  paused={this.state.paused}
+                  unlimitedSprites={this.state.unlimitedSprites}
+                  onError={this.handleEmulatorError}
+                  ref={(emulator) => {
+                    this.emulator = emulator;
+                  }}
+                />
+              </div>
+            </>
           ) : null}
 
           {/* Controls Modal */}
@@ -387,6 +410,23 @@ class RunPage extends Component {
               }
             />
           )}
+
+          {/* Video Settings Modal */}
+          <VideoSettingsModal
+            isOpen={this.state.videoModalOpen}
+            onClose={this.toggleVideoModal}
+            luminance={this.state.luminance}
+            saturation={this.state.saturation}
+            gamma={this.state.gamma}
+            crtFilter={this.state.crtFilter}
+            unlimitedSprites={this.state.unlimitedSprites}
+            onChangeLuminance={this.onChangeLuminance}
+            onChangeSaturation={this.onChangeSaturation}
+            onChangeGamma={this.onChangeGamma}
+            onToggleCrtFilter={this.toggleCrtFilter}
+            onToggleUnlimitedSprites={this.toggleUnlimitedSprites}
+            onReset={this.resetVideoSettings}
+          />
 
           {/* ZIP Multi-ROM Selection Modal */}
           <ZipRomModal
@@ -430,8 +470,15 @@ class RunPage extends Component {
 
       if (isLocalROM) {
         this.setState({ romName: romInfo.name });
-        const localROMData = localStorage.getItem("blob-" + romHash);
-        this.handleLoaded(localROMData, romInfo.name);
+        RomLibrary.getRomData(romHash).then((localROMData) => {
+          if (!localROMData) {
+            this.setState({
+              error: `Impossible de charger les données de la ROM : ${romInfo.name}`,
+            });
+          } else {
+            this.handleLoaded(localROMData, romInfo.name);
+          }
+        });
       } else {
         this.setState({ romName: romInfo.description });
         this.currentRequest = loadBinary(
@@ -538,8 +585,69 @@ class RunPage extends Component {
     this.setState({ menuOpen: false });
   };
 
+  saveVideoSettingsCurrent = () => {
+    try {
+      localStorage.setItem(
+        "jsnes_video_settings",
+        JSON.stringify({
+          luminance: this.state.luminance,
+          saturation: this.state.saturation,
+          gamma: this.state.gamma,
+          crtFilter: this.state.crtFilter,
+        }),
+      );
+    } catch {
+      // localStorage not available
+    }
+  };
+
+  toggleVideoModal = () => {
+    this.setState((prev) => {
+      const nextOpen = !prev.videoModalOpen;
+      if (nextOpen) {
+        return {
+          videoModalOpen: true,
+          paused: true,
+          wasPausedBeforeVideoModal: prev.paused,
+        };
+      } else {
+        return {
+          videoModalOpen: false,
+          paused: prev.wasPausedBeforeVideoModal || false,
+        };
+      }
+    });
+  };
+
+  onChangeLuminance = (luminance) => {
+    this.setState({ luminance }, this.saveVideoSettingsCurrent);
+  };
+
+  onChangeSaturation = (saturation) => {
+    this.setState({ saturation }, this.saveVideoSettingsCurrent);
+  };
+
+  onChangeGamma = (gamma) => {
+    this.setState({ gamma }, this.saveVideoSettingsCurrent);
+  };
+
   toggleCrtFilter = () => {
-    this.setState((prev) => ({ crtFilter: !prev.crtFilter }));
+    this.setState(
+      (prev) => ({ crtFilter: !prev.crtFilter }),
+      this.saveVideoSettingsCurrent,
+    );
+  };
+
+  resetVideoSettings = () => {
+    this.setState(
+      {
+        luminance: 100,
+        saturation: 100,
+        gamma: 1.0,
+        crtFilter: false,
+      },
+      this.saveVideoSettingsCurrent,
+    );
   };
 
   toggleUnlimitedSprites = () => {

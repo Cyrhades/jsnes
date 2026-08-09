@@ -84,6 +84,16 @@ export default class Speakers {
   constructor({ onBufferUnderrun }) {
     this.onBufferUnderrun = onBufferUnderrun;
     this.audioCtx = null;
+    const AudioCtx =
+      typeof window !== "undefined" &&
+      (window.AudioContext || window.webkitAudioContext);
+    if (AudioCtx) {
+      try {
+        this.audioCtx = new AudioCtx();
+      } catch {
+        // AudioContext constructor failed (e.g. non-browser environment)
+      }
+    }
     this.node = null;
     this.batchL = new Float32Array(BATCH_SIZE);
     this.batchR = new Float32Array(BATCH_SIZE);
@@ -101,10 +111,19 @@ export default class Speakers {
   // Callers may fire-and-forget — the node will be null until the worklet
   // loads, and writeSample() silently drops samples during that brief window.
   async start() {
-    if (!window.AudioContext) {
+    const AudioCtx =
+      typeof window !== "undefined" &&
+      (window.AudioContext || window.webkitAudioContext);
+    if (!AudioCtx) {
       return;
     }
-    this.audioCtx = new window.AudioContext();
+    if (!this.audioCtx) {
+      try {
+        this.audioCtx = new AudioCtx();
+      } catch {
+        return;
+      }
+    }
 
     const blob = new Blob([workletCode], { type: "application/javascript" });
     const workletUrl = URL.createObjectURL(blob);

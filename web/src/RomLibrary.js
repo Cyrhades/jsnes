@@ -1,5 +1,6 @@
 import { parseZip } from "../../src/zip-loader.js";
 import { generateRomThumbnail } from "./romThumbnail.js";
+import { idbGet, idbSet, idbRemove } from "./idbStorage.js";
 
 const pFileReader = function (file) {
   return new Promise((resolve, reject) => {
@@ -37,14 +38,22 @@ const hashFile = function (byteString) {
 };
 
 const RomLibrary = {
+  /**
+   * Synchronous lookup for ROM metadata by hash.
+   */
   getRomInfoByHash: function (hash) {
     return this.load().find((rom) => rom.hash === hash);
   },
 
   /**
-   * Save a ROM file or ZIP file to local storage library.
-   * If ZIP contains a single ROM, extracts and saves it automatically.
-   * If ZIP contains multiple ROMs, saves as a ZIP Pack and returns pack info.
+   * Async retrieval of raw ROM binary string by hash.
+   */
+  getRomData: function (hash) {
+    return idbGet("blob-" + hash);
+  },
+
+  /**
+   * Save a ROM file or ZIP file to IndexedDB/localStorage library.
    */
   save: function (file) {
     return pFileReader(file).then((readFile) => {
@@ -76,45 +85,43 @@ const RomLibrary = {
   },
 
   /**
-   * Save a multi-ROM ZIP archive as a Pack in local storage.
+   * Save a multi-ROM ZIP archive as a Pack in IndexedDB.
    */
-  saveZipPack: function (packName, roms, rawByteString) {
-    return hashFile(rawByteString).then((hash) => {
-      const savedRomInfo = localStorage.getItem("savedRomInfo");
-      const existingLibrary = savedRomInfo ? JSON.parse(savedRomInfo) : [];
+  saveZipPack: async function (packName, roms, rawByteString) {
+    const hash = await hashFile(rawByteString);
+    const existingLibrary = await this.loadAsync();
 
-      const pack = {
-        isPack: true,
-        name: packName,
-        hash: hash,
-        romCount: roms.length,
-        added: Date.now(),
-      };
+    const pack = {
+      isPack: true,
+      name: packName,
+      hash: hash,
+      romCount: roms.length,
+      added: Date.now(),
+    };
 
-      const filteredLibrary = existingLibrary.filter((r) => r.hash !== hash);
-      const newRomInfo = JSON.stringify(filteredLibrary.concat([pack]));
+    const filteredLibrary = existingLibrary.filter((r) => r.hash !== hash);
+    const newRomInfo = JSON.stringify(filteredLibrary.concat([pack]));
 
-      localStorage.setItem("savedRomInfo", newRomInfo);
-      localStorage.setItem("blob-" + hash, rawByteString);
+    await idbSet("savedRomInfo", newRomInfo);
+    await idbSet("blob-" + hash, rawByteString);
 
-      return {
-        ...pack,
-        roms: roms,
-        isZip: true,
-        type: "multiple",
-        zipName: packName,
-      };
-    });
+    return {
+      ...pack,
+      roms: roms,
+      isZip: true,
+      type: "multiple",
+      zipName: packName,
+    };
   },
 
   /**
    * Reload all ROM entries from a saved ZIP Pack hash.
    */
-  getZipPackRoms: function (hash) {
+  getZipPackRoms: async function (hash) {
     const romInfo = this.getRomInfoByHash(hash);
     if (!romInfo) return null;
 
-    const rawByteString = localStorage.getItem("blob-" + hash);
+    const rawByteString = await idbGet("blob-" + hash);
     if (!rawByteString) return null;
 
     const zipResult = parseZip(rawByteString);
@@ -128,32 +135,31 @@ const RomLibrary = {
   },
 
   /**
-   * Save raw ROM binary string to local storage with specified name.
+   * Save raw ROM binary string to IndexedDB with specified name.
    */
-  saveRawRom: function (name, byteString) {
-    return Promise.all([
+  saveRawRom: async function (name, byteString) {
+    const [hash, thumbnail] = await Promise.all([
       hashFile(byteString),
       generateRomThumbnail(byteString, 60, 300, name),
-    ]).then(([hash, thumbnail]) => {
-      const savedRomInfo = localStorage.getItem("savedRomInfo");
-      const existingLibrary = savedRomInfo ? JSON.parse(savedRomInfo) : [];
+    ]);
 
-      const rom = {
-        isPack: false,
-        name: name,
-        hash: hash,
-        added: Date.now(),
-        thumbnail: thumbnail || null,
-      };
+    const existingLibrary = await this.loadAsync();
 
-      const filteredLibrary = existingLibrary.filter((r) => r.hash !== hash);
-      const newRomInfo = JSON.stringify(filteredLibrary.concat([rom]));
+    const rom = {
+      isPack: false,
+      name: name,
+      hash: hash,
+      added: Date.now(),
+      thumbnail: thumbnail || null,
+    };
 
-      localStorage.setItem("savedRomInfo", newRomInfo);
-      localStorage.setItem("blob-" + hash, byteString);
+    const filteredLibrary = existingLibrary.filter((r) => r.hash !== hash);
+    const newRomInfo = JSON.stringify(filteredLibrary.concat([rom]));
 
-      return rom;
-    });
+    await idbSet("savedRomInfo", newRomInfo);
+    await idbSet("blob-" + hash, byteString);
+
+    return rom;
   },
 
   /**
@@ -164,24 +170,44 @@ const RomLibrary = {
     return this.saveRawRom(romName, romDataStr);
   },
 
+  /**
+   * Synchronous load from localStorage fallback / in-memory.
+   */
   load: function () {
-    const localData = localStorage.getItem("savedRomInfo");
-    if (!localData) return [];
     try {
-      const savedRomInfo = JSON.parse(localData);
-      return savedRomInfo || [];
+      const localData = localStorage.getItem("savedRomInfo");
+      if (!localData) return [];
+      return JSON.parse(localData) || [];
     } catch {
       return [];
     }
   },
 
-  delete: function (hash) {
-    const existingLibrary = this.load();
-    localStorage.removeItem("blob-" + hash);
-    localStorage.setItem(
-      "savedRomInfo",
-      JSON.stringify(existingLibrary.filter((rom) => rom.hash !== hash)),
-    );
+  /**
+   * Asynchronous load from IndexedDB with auto-migration.
+   */
+  loadAsync: async function () {
+    try {
+      const localData = await idbGet("savedRomInfo");
+      if (!localData) return [];
+      if (typeof localData === "string") {
+        return JSON.parse(localData) || [];
+      }
+      return Array.isArray(localData) ? localData : [];
+    } catch {
+      return [];
+    }
+  },
+
+  /**
+   * Delete a ROM or ZIP pack entry by hash.
+   */
+  delete: async function (hash) {
+    const existingLibrary = await this.loadAsync();
+    await idbRemove("blob-" + hash);
+    const updatedLibrary = existingLibrary.filter((rom) => rom.hash !== hash);
+    await idbSet("savedRomInfo", JSON.stringify(updatedLibrary));
+    return updatedLibrary;
   },
 };
 

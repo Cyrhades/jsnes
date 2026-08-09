@@ -33,6 +33,7 @@ export class NES {
   reloadROM: () => void;
   loadROM: (data: string | Buffer | Uint8Array | ArrayBuffer) => void;
   setFramerate: (rate: number) => void;
+  setSampleRate: (rate: number) => void;
   toJSON: () => EmulatorData;
   fromJSON: (data: EmulatorData) => void;
 }

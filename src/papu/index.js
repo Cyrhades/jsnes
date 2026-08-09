@@ -4,7 +4,7 @@ import ChannelNoise from "./channel-noise.js";
 import ChannelSquare from "./channel-square.js";
 import ChannelTriangle from "./channel-triangle.js";
 
-const CPU_FREQ_NTSC = 1789772.5; //1789772.72727272d;
+const CPU_FREQ_NTSC = 1789772.727272727; // 21.477272727 MHz / 12 (exact NTSC CPU frequency)
 // const CPU_FREQ_PAL = 1773447.4;
 
 // Frame counter step timing tables (in CPU cycles).
@@ -288,7 +288,7 @@ class PAPU {
 
     // Clock Square channel 1 Prog timer:
     square1.progTimerCount -= nCycles;
-    if (square1.progTimerCount <= 0) {
+    while (square1.progTimerCount <= 0) {
       square1.progTimerCount += (square1.progTimerMax + 1) << 1;
 
       square1.squareCounter++;
@@ -298,7 +298,7 @@ class PAPU {
 
     // Clock Square channel 2 Prog timer:
     square2.progTimerCount -= nCycles;
-    if (square2.progTimerCount <= 0) {
+    while (square2.progTimerCount <= 0) {
       square2.progTimerCount += (square2.progTimerMax + 1) << 1;
 
       square2.squareCounter++;
@@ -360,7 +360,7 @@ class PAPU {
 
     // Clock sample timer:
     this.sampleTimer += nCycles << 10;
-    if (this.sampleTimer >= this.sampleTimerMax) {
+    while (this.sampleTimer >= this.sampleTimerMax) {
       // Sample channels:
       this.sample();
       this.sampleTimer -= this.sampleTimerMax;
@@ -682,6 +682,13 @@ class PAPU {
       return this.noiseWavelengthLookup[value];
     }
     return 0;
+  }
+
+  setSampleRate(rate) {
+    this.sampleRate = rate;
+    this.sampleTimerMax = Math.floor(
+      (1024.0 * CPU_FREQ_NTSC) / this.sampleRate,
+    );
   }
 
   // Recalculate the sample timer for a non-standard host frame rate.

@@ -160,19 +160,8 @@ class ROM {
     this.prgNvRamSize = 0;
     this.chrRamSize = 0;
     this.chrNvRamSize = 0;
+    this.timingMode = 0;
     this.consoleType = 0;
-
-    // Detect PAL timing from iNES 1.0 header:
-    //   byte 9 bit 0 = 1 (PAL)
-    //   byte 10 bits 1..0 = 2 (PAL)
-    if (
-      !foundError &&
-      ((this.header[9] & 1) !== 0 || (this.header[10] & 3) === 2)
-    ) {
-      this.timingMode = 1; // PAL
-    } else {
-      this.timingMode = 0; // NTSC
-    }
   }
 
   // Parse NES 2.0 header fields (bytes 4-15).

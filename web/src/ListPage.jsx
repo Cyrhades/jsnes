@@ -5,7 +5,7 @@ import config from "./config";
 import RomLibrary from "./RomLibrary";
 import ZipRomModal from "./ZipRomModal";
 import { generateRomThumbnail } from "./romThumbnail";
-import { loadBinary } from "./utils";
+import { loadBinary, detectRomRegion } from "./utils";
 
 function withNavigate(Component) {
   return function WrappedComponent(props) {
@@ -29,6 +29,7 @@ class ListPage extends Component {
   }
 
   componentDidMount() {
+    this.updateLibrary();
     this.loadSampleThumbnails();
   }
 
@@ -223,9 +224,20 @@ class ListPage extends Component {
                         </div>
 
                         <div>
-                          <h3 className="font-bold text-white group-hover:text-indigo-300 transition-colors text-base truncate">
-                            {rom.name}
-                          </h3>
+                          <div className="flex items-center space-x-2">
+                            <span
+                              className={`px-1.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wider rounded border ${
+                                detectRomRegion(rom.name) === "PAL"
+                                  ? "bg-emerald-950/80 text-emerald-300 border-emerald-500/40"
+                                  : "bg-sky-950/80 text-sky-300 border-sky-500/40"
+                              }`}
+                            >
+                              {detectRomRegion(rom.name)}
+                            </span>
+                            <h3 className="font-bold text-white group-hover:text-indigo-300 transition-colors text-base truncate">
+                              {rom.name}
+                            </h3>
+                          </div>
                           <div className="text-xs text-slate-400 mt-1 line-clamp-1">
                             {rom.description || "Jeu NES officiel"}
                           </div>
@@ -323,9 +335,19 @@ class ListPage extends Component {
 
                         <div>
                           <div className="flex items-center space-x-2">
-                            {rom.isPack && (
+                            {rom.isPack ? (
                               <span className="text-[10px] font-bold uppercase tracking-wider bg-indigo-950 text-indigo-300 border border-indigo-700 px-1.5 py-0.5 rounded">
                                 PACK ZIP
+                              </span>
+                            ) : (
+                              <span
+                                className={`px-1.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wider rounded border ${
+                                  detectRomRegion(rom.name, rom.data) === "PAL"
+                                    ? "bg-emerald-950/80 text-emerald-300 border-emerald-500/40"
+                                    : "bg-sky-950/80 text-sky-300 border-sky-500/40"
+                                }`}
+                              >
+                                {detectRomRegion(rom.name, rom.data)}
                               </span>
                             )}
                             <h3 className="font-bold text-white group-hover:text-purple-300 transition-colors text-base truncate pr-6">
@@ -381,17 +403,20 @@ class ListPage extends Component {
   }
 
   deleteRom = (hash) => {
-    RomLibrary.delete(hash);
-    this.updateLibrary();
+    RomLibrary.delete(hash).then(() => {
+      this.updateLibrary();
+    });
   };
 
   updateLibrary = () => {
-    this.setState({ romLibrary: RomLibrary.load() });
+    RomLibrary.loadAsync().then((romLibrary) => {
+      this.setState({ romLibrary });
+    });
   };
 
-  handleLibraryCardClick = (rom) => {
+  handleLibraryCardClick = async (rom) => {
     if (rom.isPack) {
-      const packData = RomLibrary.getZipPackRoms(rom.hash);
+      const packData = await RomLibrary.getZipPackRoms(rom.hash);
       if (packData) {
         this.setState({
           zipModalOpen: true,

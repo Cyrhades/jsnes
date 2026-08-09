@@ -193,4 +193,24 @@ describe("NES", function () {
       assert.ok(fps > 0);
     });
   });
+
+  describe("#setSampleRate()", function () {
+    it("updates NES sampleRate option and PAPU sampleRate and sampleTimerMax", function () {
+      let nes = new NES({ sampleRate: 44100 });
+      assert.strictEqual(nes.opts.sampleRate, 44100);
+      assert.strictEqual(nes.papu.sampleRate, 44100);
+      let timerMax44100 = nes.papu.sampleTimerMax;
+
+      nes.setSampleRate(48000);
+      assert.strictEqual(nes.opts.sampleRate, 48000);
+      assert.strictEqual(nes.papu.sampleRate, 48000);
+      let timerMax48000 = nes.papu.sampleTimerMax;
+
+      assert.ok(timerMax48000 < timerMax44100);
+      assert.strictEqual(
+        timerMax48000,
+        Math.floor((1024.0 * 1789772.727272727) / 48000),
+      );
+    });
+  });
 });

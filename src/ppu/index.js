@@ -519,17 +519,19 @@ class PPU {
         }
         break;
 
-      default:
-        let maxScanline = this.nes.rom && this.nes.rom.isPal() ? 311 : 261;
-        if (this.scanline === maxScanline) {
-          // Post-render scanline (NES scanline 240), no rendering.
-          // VBlank flag is set at dot 1 of the NEXT scanline (scanline 0 / NES 241)
-          // by the frame loop and catch-up loop, gated on vblankPending.
-          this.vblankPending = true;
+      case 261:
+        // Post-render scanline (NES scanline 240), no rendering.
+        // VBlank flag is set at dot 1 of the NEXT scanline (scanline 0 / NES 241)
+        // by the frame loop and catch-up loop, gated on vblankPending.
+        this.vblankPending = true;
 
-          // Wrap around:
-          this.scanline = -1; // will be incremented to 0
-        } else if (this.scanline >= 21 && this.scanline <= 260) {
+        // Wrap around:
+        this.scanline = -1; // will be incremented to 0
+
+        break;
+
+      default:
+        if (this.scanline >= 21 && this.scanline <= 260) {
           // NES visible scanline index (0-239). The PPU's internal scanline
           // counter starts at 0 for VBlank, 20 for pre-render, 21 for the
           // first visible scanline. The buffer row is scanline - 20 (1-240),

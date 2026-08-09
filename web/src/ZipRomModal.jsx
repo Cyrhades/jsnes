@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import PropTypes from "prop-types";
 import { generateRomThumbnail } from "./romThumbnail.js";
+import { detectRomRegion } from "./utils.js";
 
 /**
  * Non-blocking modal to display multiple ROM files contained in a single ZIP archive.
@@ -98,6 +99,7 @@ function ZipRomModal({ isOpen, zipName, roms, onSelectRom, onClose }) {
                 ? Math.round(rom.data.length / 1024)
                 : null;
               const thumb = thumbnails[rom.name];
+              const region = detectRomRegion(rom.name, rom.data);
 
               return (
                 <button
@@ -124,9 +126,20 @@ function ZipRomModal({ isOpen, zipName, roms, onSelectRom, onClose }) {
                     </div>
 
                     <div className="truncate">
-                      <span className="font-semibold text-gray-100 group-hover:text-indigo-300 block truncate transition-colors text-sm">
-                        {rom.name}
-                      </span>
+                      <div className="flex items-center space-x-2">
+                        <span
+                          className={`px-1.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wider rounded border ${
+                            region === "PAL"
+                              ? "bg-emerald-950/80 text-emerald-300 border-emerald-500/40"
+                              : "bg-sky-950/80 text-sky-300 border-sky-500/40"
+                          }`}
+                        >
+                          {region}
+                        </span>
+                        <span className="font-semibold text-gray-100 group-hover:text-indigo-300 block truncate transition-colors text-sm">
+                          {rom.name}
+                        </span>
+                      </div>
                       {sizeKB && (
                         <span className="text-xs text-gray-400 block mt-1">
                           {sizeKB} KB • NES ROM
