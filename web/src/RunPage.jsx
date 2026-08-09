@@ -3,12 +3,15 @@ import { Link, useLocation, useParams } from "react-router-dom";
 
 import config from "./config";
 import ControlsModal from "./ControlsModal";
+import CartridgeModal from "./CartridgeModal";
 import Emulator from "./Emulator";
 import RomLibrary from "./RomLibrary";
+import SaveStatesModal from "./SaveStatesModal";
 import VideoSettingsModal from "./VideoSettingsModal";
 import ZipRomModal from "./ZipRomModal";
 import { loadBinary, detectRomRegion } from "./utils";
 import { parseZip } from "../../src/zip-loader.js";
+import { idbGet, idbSet, idbRemove } from "./idbStorage.js";
 
 function withParams(Component) {
   return function WrappedComponent(props) {
@@ -50,10 +53,13 @@ class RunPage extends Component {
       saturation: savedVideoSettings.saturation,
       gamma: savedVideoSettings.gamma,
       videoModalOpen: false,
-      unlimitedSprites: true,
       controlsModalOpen: false,
+      saveStatesModalOpen: false,
+      cartridgeModalOpen: false,
+      saveStateSlots: [],
       zipModalOpen: false,
       zipRoms: [],
+      unlimitedSprites: true,
       loading: true,
       loadedPercent: 3,
       error: null,
@@ -128,32 +134,8 @@ class RunPage extends Component {
                 <div className="fixed inset-0 z-40" onClick={this.closeMenu} />
 
                 <div className="absolute right-0 mt-2 w-64 glass-panel bg-slate-900/95 border border-slate-800 rounded-2xl shadow-2xl p-2 z-50 divide-y divide-slate-800/80 space-y-1 glow-purple animate-in fade-in zoom-in-95 duration-150">
-                  {/* Menu Group 1: Navigation & Game state */}
+                  {/* Menu Group 1: Playback Controls */}
                   <div className="py-1 space-y-0.5">
-                    <Link
-                      to="/"
-                      onClick={this.closeMenu}
-                      className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium text-slate-200 hover:bg-slate-800/80 hover:text-white transition-all no-underline"
-                    >
-                      <div className="flex items-center space-x-2.5">
-                        <svg
-                          className="w-4 h-4 text-indigo-400"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth="2"
-                            d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
-                          />
-                        </svg>
-                        <span>Bibliothèque</span>
-                      </div>
-                      <span className="text-slate-500 text-xs">&rsaquo;</span>
-                    </Link>
-
                     <button
                       onClick={() => {
                         this.handlePauseResume();
@@ -190,6 +172,35 @@ class RunPage extends Component {
                         }`}
                       >
                         {this.state.paused ? "En pause" : "En cours"}
+                      </span>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        this.reloadRom();
+                        this.closeMenu();
+                      }}
+                      className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium text-slate-200 hover:bg-slate-800/80 hover:text-white transition-all cursor-pointer bg-transparent border-0 text-left disabled:opacity-40"
+                      disabled={!this.state.romData || !!this.state.error}
+                    >
+                      <div className="flex items-center space-x-2.5">
+                        <svg
+                          className="w-4 h-4 text-sky-400"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth="2"
+                            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                          />
+                        </svg>
+                        <span>Recharger la ROM</span>
+                      </div>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-sky-500/20 text-sky-300 border border-sky-500/30">
+                        Reset
                       </span>
                     </button>
                   </div>
@@ -235,7 +246,7 @@ class RunPage extends Component {
                     </button>
                   </div>
 
-                  {/* Menu Group 3: Input & Actions */}
+                  {/* Menu Group 3: Input, Storage & Cartridge info */}
                   <div className="py-1 space-y-0.5">
                     <button
                       onClick={() => {
@@ -260,6 +271,60 @@ class RunPage extends Component {
                           />
                         </svg>
                         <span>Manette</span>
+                      </div>
+                      <span className="text-slate-500 text-xs">&rsaquo;</span>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        this.toggleSaveStatesModal();
+                        this.closeMenu();
+                      }}
+                      className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium text-slate-200 hover:bg-slate-800/80 hover:text-white transition-all cursor-pointer bg-transparent border-0 text-left disabled:opacity-40"
+                      disabled={!this.state.romData || !!this.state.error}
+                    >
+                      <div className="flex items-center space-x-2.5">
+                        <svg
+                          className="w-4 h-4 text-indigo-400"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth="2"
+                            d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"
+                          />
+                        </svg>
+                        <span>Sauvegardes d'état</span>
+                      </div>
+                      <span className="text-slate-500 text-xs">&rsaquo;</span>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        this.toggleCartridgeModal();
+                        this.closeMenu();
+                      }}
+                      className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium text-slate-200 hover:bg-slate-800/80 hover:text-white transition-all cursor-pointer bg-transparent border-0 text-left disabled:opacity-40"
+                      disabled={!this.state.romData || !!this.state.error}
+                    >
+                      <div className="flex items-center space-x-2.5">
+                        <svg
+                          className="w-4 h-4 text-emerald-400"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth="2"
+                            d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"
+                          />
+                        </svg>
+                        <span>Cartouche</span>
                       </div>
                       <span className="text-slate-500 text-xs">&rsaquo;</span>
                     </button>
@@ -296,6 +361,33 @@ class RunPage extends Component {
                       </div>
                       <span className="text-slate-500 text-xs">&rsaquo;</span>
                     </button>
+                  </div>
+
+                  {/* Menu Group 4: Exit to ROM Library */}
+                  <div className="py-1 space-y-0.5">
+                    <Link
+                      to="/"
+                      onClick={this.closeMenu}
+                      className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium text-rose-300 hover:bg-rose-950/40 hover:text-rose-200 transition-all no-underline"
+                    >
+                      <div className="flex items-center space-x-2.5">
+                        <svg
+                          className="w-4 h-4 text-rose-400"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth="2"
+                            d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+                          />
+                        </svg>
+                        <span>Quitter</span>
+                      </div>
+                      <span className="text-rose-500 text-xs">&rsaquo;</span>
+                    </Link>
                   </div>
                 </div>
               </>
@@ -428,6 +520,25 @@ class RunPage extends Component {
             onReset={this.resetVideoSettings}
           />
 
+          {/* Save States Modal */}
+          <SaveStatesModal
+            isOpen={this.state.saveStatesModalOpen}
+            onClose={this.toggleSaveStatesModal}
+            romName={this.state.romName}
+            slots={this.state.saveStateSlots}
+            onSaveSlot={this.saveStateToSlot}
+            onLoadSlot={this.loadStateFromSlot}
+            onDeleteSlot={this.deleteStateSlot}
+          />
+
+          {/* Cartridge Info Modal */}
+          <CartridgeModal
+            isOpen={this.state.cartridgeModalOpen}
+            onClose={this.toggleCartridgeModal}
+            romData={this.state.romData}
+            romName={this.state.romName}
+          />
+
           {/* ZIP Multi-ROM Selection Modal */}
           <ZipRomModal
             isOpen={this.state.zipModalOpen}
@@ -443,12 +554,15 @@ class RunPage extends Component {
 
   componentDidMount() {
     window.addEventListener("resize", this.layout);
+    window.addEventListener("keydown", this.handleGlobalKeyDown);
     this.layout();
     this.load();
+    this.loadSaveStateSlots();
   }
 
   componentWillUnmount() {
     window.removeEventListener("resize", this.layout);
+    window.removeEventListener("keydown", this.handleGlobalKeyDown);
     if (this.currentRequest) {
       this.currentRequest.abort();
     }
@@ -686,6 +800,228 @@ class RunPage extends Component {
 
   toggleControlsModal = () => {
     this.setState({ controlsModalOpen: !this.state.controlsModalOpen });
+  };
+
+  getSaveStateKey = (slotNumber) => {
+    const slug = this.props.params.slug || "game";
+    return `jsnes_savestate_${slug}_slot${slotNumber}`;
+  };
+
+  parseSaveData = (raw) => {
+    if (!raw) return null;
+    if (typeof raw === "object") return raw;
+    if (typeof raw === "string") {
+      try {
+        return JSON.parse(raw);
+      } catch (e) {
+        console.warn("Could not parse save data string:", e);
+        return null;
+      }
+    }
+    return null;
+  };
+
+  loadSaveStateSlots = async () => {
+    const slots = [];
+    for (let slot = 1; slot <= 3; slot++) {
+      const key = this.getSaveStateKey(slot);
+      try {
+        const raw = await idbGet(key);
+        const parsed = this.parseSaveData(raw);
+        if (parsed) {
+          slots.push(parsed);
+        }
+      } catch {
+        // ignore
+      }
+    }
+    this.setState({ saveStateSlots: slots });
+  };
+
+  saveStateToSlot = async (slotNumber) => {
+    if (!this.emulator || !this.emulator.browser || !this.emulator.browser.nes)
+      return;
+    try {
+      const state = this.emulator.browser.nes.toJSON();
+      const screenshotImg = this.emulator.screenshot();
+      const payload = {
+        slot: slotNumber,
+        timestamp: Date.now(),
+        screenshot: screenshotImg ? screenshotImg.src : null,
+        state,
+      };
+      const key = this.getSaveStateKey(slotNumber);
+      await idbSet(key, payload);
+      await this.loadSaveStateSlots();
+    } catch (e) {
+      console.error("Save state failed:", e);
+    }
+  };
+
+  loadStateFromSlot = async (slotNumber) => {
+    if (!this.emulator || !this.emulator.browser || !this.emulator.browser.nes)
+      return;
+    try {
+      const key = this.getSaveStateKey(slotNumber);
+      const raw = await idbGet(key);
+      const parsed = this.parseSaveData(raw);
+      if (parsed && parsed.state) {
+        this.emulator.browser.nes.fromJSON(parsed.state);
+        // Unpause emulation & close save states modal if open
+        this.setState({
+          saveStatesModalOpen: false,
+          paused: false,
+        });
+      }
+    } catch (e) {
+      console.error("Load state failed:", e);
+    }
+  };
+
+  deleteStateSlot = async (slotNumber) => {
+    try {
+      const key = this.getSaveStateKey(slotNumber);
+      await idbRemove(key);
+      await this.loadSaveStateSlots();
+    } catch (e) {
+      console.error("Delete save state failed:", e);
+    }
+  };
+
+  toggleSaveStatesModal = () => {
+    this.setState(
+      (prev) => {
+        const nextOpen = !prev.saveStatesModalOpen;
+        if (nextOpen) {
+          return {
+            saveStatesModalOpen: true,
+            paused: true,
+            wasPausedBeforeSaveStatesModal: prev.paused,
+          };
+        } else {
+          return {
+            saveStatesModalOpen: false,
+            paused: prev.wasPausedBeforeSaveStatesModal || false,
+          };
+        }
+      },
+      () => {
+        if (this.state.saveStatesModalOpen) {
+          this.loadSaveStateSlots();
+        }
+      },
+    );
+  };
+
+  toggleCartridgeModal = () => {
+    this.setState({ cartridgeModalOpen: !this.state.cartridgeModalOpen });
+  };
+
+  getSlotFromEvent = (e) => {
+    if (!e) return null;
+    const code = e.code || "";
+    const key = e.key || "";
+
+    // Check physical code or key character for Slot 1
+    if (
+      code === "Digit1" ||
+      code === "Numpad1" ||
+      key === "1" ||
+      key === "&" ||
+      (code.includes("Numpad") && (key === "1" || key === "End"))
+    )
+      return 1;
+
+    // Check physical code or key character for Slot 2
+    if (
+      code === "Digit2" ||
+      code === "Numpad2" ||
+      key === "2" ||
+      key === "é" ||
+      (code.includes("Numpad") &&
+        (key === "2" || key === "ArrowDown" || key === "Down"))
+    )
+      return 2;
+
+    // Check physical code or key character for Slot 3
+    if (
+      code === "Digit3" ||
+      code === "Numpad3" ||
+      key === "3" ||
+      key === '"' ||
+      (code.includes("Numpad") &&
+        (key === "3" || key === "PageDown" || key === "Next"))
+    )
+      return 3;
+
+    return null;
+  };
+
+  handleGlobalKeyDown = (e) => {
+    if (!e || e.repeat) return;
+    if (
+      e.target &&
+      (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA")
+    )
+      return;
+
+    const isCtrl = e.ctrlKey || e.metaKey;
+    const isAlt = e.altKey;
+    const isShift = e.shiftKey;
+
+    // Quick Load (Slot 1): Ctrl+Alt+L or Ctrl+Shift+L
+    if (isCtrl && (isAlt || isShift) && (e.key === "L" || e.key === "l")) {
+      e.preventDefault();
+      this.loadStateFromSlot(1);
+      return;
+    }
+
+    // Quick Save (Slot 1): Ctrl+S or Shift+S (without Alt)
+    if ((isCtrl || isShift) && !isAlt && (e.key === "S" || e.key === "s")) {
+      e.preventDefault();
+      this.saveStateToSlot(1);
+      return;
+    }
+
+    const slot = this.getSlotFromEvent(e);
+    if (slot !== null) {
+      // Load Slot 1..3: Ctrl+Alt+[1..3] or Ctrl+Shift+[1..3]
+      if (isCtrl && (isAlt || isShift)) {
+        e.preventDefault();
+        this.loadStateFromSlot(slot);
+        return;
+      }
+      // Save Slot 1..3: Ctrl+[1..3] or Shift+[1..3] (without Alt)
+      if ((isCtrl || isShift) && !isAlt) {
+        e.preventDefault();
+        this.saveStateToSlot(slot);
+        return;
+      }
+    }
+
+    // Function keys (F2 = Save 1, F4 = Load 1, F5 = Save 1, F8 = Load 1)
+    if (e.key === "F2" || e.key === "F5") {
+      e.preventDefault();
+      this.saveStateToSlot(1);
+    } else if (e.key === "F4" || e.key === "F8") {
+      e.preventDefault();
+      this.loadStateFromSlot(1);
+    }
+  };
+
+  reloadRom = () => {
+    if (this.emulator && this.emulator.browser && this.state.romData) {
+      try {
+        this.emulator.browser.loadROM(this.state.romData);
+        this.emulator.browser.start();
+        this.setState({
+          paused: false,
+          error: null,
+        });
+      } catch (e) {
+        console.error("ROM reload failed:", e);
+      }
+    }
   };
 }
 

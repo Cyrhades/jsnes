@@ -127,7 +127,8 @@ export async function idbSet(key, value) {
   // Attempt sync write to localStorage for smaller objects or fallback.
   // Catch and ignore QuotaExceededError if it's already safely stored in IndexedDB.
   try {
-    localStorage.setItem(key, value);
+    const strVal = typeof value === "string" ? value : JSON.stringify(value);
+    localStorage.setItem(key, strVal);
   } catch (quotaErr) {
     if (!savedInIdb) {
       console.error(
