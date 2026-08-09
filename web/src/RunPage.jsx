@@ -60,6 +60,8 @@ class RunPage extends Component {
       zipModalOpen: false,
       zipRoms: [],
       unlimitedSprites: true,
+      isRecordingVideo: false,
+      recordingSeconds: 0,
       loading: true,
       loadedPercent: 3,
       error: null,
@@ -357,9 +359,61 @@ class RunPage extends Component {
                             d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"
                           />
                         </svg>
-                        <span>Capture</span>
+                        <span>Capture d'écran</span>
                       </div>
-                      <span className="text-slate-500 text-xs">&rsaquo;</span>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-pink-500/20 text-pink-300 border border-pink-500/30">
+                        PNG
+                      </span>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        this.toggleVideoRecording();
+                        this.closeMenu();
+                      }}
+                      className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium text-slate-200 hover:bg-slate-800/80 hover:text-white transition-all cursor-pointer bg-transparent border-0 text-left disabled:opacity-40"
+                      disabled={!this.state.running || !!this.state.error}
+                    >
+                      <div className="flex items-center space-x-2.5">
+                        {this.state.isRecordingVideo ? (
+                          <div className="relative flex items-center justify-center">
+                            <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping absolute" />
+                            <span className="w-2.5 h-2.5 rounded-full bg-rose-500 relative" />
+                          </div>
+                        ) : (
+                          <svg
+                            className="w-4 h-4 text-purple-400"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth="2"
+                              d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
+                            />
+                          </svg>
+                        )}
+                        <span>
+                          {this.state.isRecordingVideo
+                            ? "Arrêter la vidéo"
+                            : "Enregistrer une vidéo"}
+                        </span>
+                      </div>
+                      <span
+                        className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
+                          this.state.isRecordingVideo
+                            ? "bg-rose-500/20 text-rose-300 border border-rose-500/40 animate-pulse"
+                            : "bg-purple-500/20 text-purple-300 border border-purple-500/30"
+                        }`}
+                      >
+                        {this.state.isRecordingVideo
+                          ? this.formatRecordingTime(
+                              this.state.recordingSeconds,
+                            )
+                          : "WebM"}
+                      </span>
                     </button>
                   </div>
 
@@ -446,6 +500,17 @@ class RunPage extends Component {
             </div>
           ) : this.state.romData ? (
             <>
+              {this.state.isRecordingVideo && (
+                <div className="absolute top-4 right-4 z-30 flex items-center space-x-2 bg-rose-950/80 border border-rose-500/50 backdrop-blur-md px-3 py-1.5 rounded-full shadow-lg pointer-events-none">
+                  <div className="relative flex items-center justify-center">
+                    <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping absolute" />
+                    <span className="w-2.5 h-2.5 rounded-full bg-rose-500 relative" />
+                  </div>
+                  <span className="text-xs font-mono font-bold text-rose-200">
+                    REC {this.formatRecordingTime(this.state.recordingSeconds)}
+                  </span>
+                </div>
+              )}
               <svg
                 className="absolute w-0 h-0 overflow-hidden pointer-events-none"
                 aria-hidden="true"
@@ -565,6 +630,14 @@ class RunPage extends Component {
     window.removeEventListener("keydown", this.handleGlobalKeyDown);
     if (this.currentRequest) {
       this.currentRequest.abort();
+    }
+    if (this.recordingTimer) {
+      clearInterval(this.recordingTimer);
+    }
+    if (this.mediaRecorder && this.mediaRecorder.state !== "inactive") {
+      try {
+        this.mediaRecorder.stop();
+      } catch {}
     }
   }
 
@@ -1021,6 +1094,137 @@ class RunPage extends Component {
       } catch (e) {
         console.error("ROM reload failed:", e);
       }
+    }
+  };
+
+  formatRecordingTime = (sec) => {
+    const m = Math.floor(sec / 60)
+      .toString()
+      .padStart(2, "0");
+    const s = (sec % 60).toString().padStart(2, "0");
+    return `${m}:${s}`;
+  };
+
+  startVideoRecording = () => {
+    if (!this.emulator || !this.emulator.browser) return;
+    try {
+      const canvas = this.emulator.browser._screen?.canvas;
+      if (!canvas || typeof canvas.captureStream !== "function") {
+        alert("L'enregistrement vidéo n'est pas supporté par ce navigateur.");
+        return;
+      }
+
+      const canvasStream = canvas.captureStream(60);
+      let combinedStream = canvasStream;
+
+      const speakers = this.emulator.browser._speakers;
+      let audioDest = null;
+      if (speakers && speakers.audioCtx && speakers.node) {
+        try {
+          audioDest = speakers.audioCtx.createMediaStreamDestination();
+          speakers.node.connect(audioDest);
+          combinedStream = new MediaStream([
+            ...canvasStream.getVideoTracks(),
+            ...audioDest.stream.getAudioTracks(),
+          ]);
+        } catch (e) {
+          console.warn("Could not attach audio track to video recording:", e);
+        }
+      }
+
+      let mimeType = "";
+      if (typeof MediaRecorder !== "undefined") {
+        if (MediaRecorder.isTypeSupported("video/webm;codecs=vp9,opus")) {
+          mimeType = "video/webm;codecs=vp9,opus";
+        } else if (
+          MediaRecorder.isTypeSupported("video/webm;codecs=vp8,opus")
+        ) {
+          mimeType = "video/webm;codecs=vp8,opus";
+        } else if (MediaRecorder.isTypeSupported("video/webm")) {
+          mimeType = "video/webm";
+        } else if (MediaRecorder.isTypeSupported("video/mp4")) {
+          mimeType = "video/mp4";
+        }
+      }
+
+      const recorderOptions = mimeType ? { mimeType } : undefined;
+      const mediaRecorder = new MediaRecorder(combinedStream, recorderOptions);
+      const chunks = [];
+
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data && e.data.size > 0) {
+          chunks.push(e.data);
+        }
+      };
+
+      mediaRecorder.onstop = () => {
+        if (audioDest && speakers && speakers.node) {
+          try {
+            speakers.node.disconnect(audioDest);
+          } catch {}
+        }
+
+        if (chunks.length > 0) {
+          const finalMime = mimeType || "video/webm";
+          const blob = new Blob(chunks, { type: finalMime });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.style.display = "none";
+          a.href = url;
+          const slug = this.props.params.slug || "game";
+          const ext = finalMime.includes("mp4") ? "mp4" : "webm";
+          a.download = `nes-${slug}-${Date.now()}.${ext}`;
+          document.body.appendChild(a);
+          a.click();
+          setTimeout(() => {
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+          }, 100);
+        }
+      };
+
+      mediaRecorder.start(1000);
+      this.mediaRecorder = mediaRecorder;
+      this.recordingAudioDest = audioDest;
+
+      this.setState({
+        isRecordingVideo: true,
+        recordingSeconds: 0,
+      });
+
+      this.recordingTimer = setInterval(() => {
+        this.setState((prev) => ({
+          recordingSeconds: prev.recordingSeconds + 1,
+        }));
+      }, 1000);
+    } catch (e) {
+      console.error("Failed to start video recording:", e);
+    }
+  };
+
+  stopVideoRecording = () => {
+    if (this.mediaRecorder && this.mediaRecorder.state !== "inactive") {
+      try {
+        this.mediaRecorder.stop();
+      } catch {}
+    }
+    if (this.recordingTimer) {
+      clearInterval(this.recordingTimer);
+      this.recordingTimer = null;
+    }
+    this.mediaRecorder = null;
+    this.recordingAudioDest = null;
+    this.setState({
+      isRecordingVideo: false,
+      recordingSeconds: 0,
+    });
+  };
+
+  toggleVideoRecording = () => {
+    if (this.state.isRecordingVideo) {
+      this.stopVideoRecording();
+    } else {
+      this.startVideoRecording();
     }
   };
 }
