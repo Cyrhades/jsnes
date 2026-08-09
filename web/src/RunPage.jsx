@@ -1340,17 +1340,20 @@ class RunPage extends Component {
     let appliedCount = 0;
     this.state.cheatCodes.forEach((item) => {
       if (item.active) {
-        try {
-          nes.gameGenie.addCode(item.code);
-          appliedCount++;
-        } catch (e) {
-          console.warn("Failed to apply cheat code:", item.code, e);
-        }
+        const codesToApply = item.rawCodes || [item.code];
+        codesToApply.forEach((code) => {
+          try {
+            nes.gameGenie.addCode(code);
+            appliedCount++;
+          } catch (e) {
+            console.warn("Failed to apply cheat code:", code, e);
+          }
+        });
       }
     });
     if (appliedCount > 0) {
       console.log(
-        `[Game Genie] ${appliedCount} code(s) applied, patches:`,
+        `[Game Genie] ${appliedCount} code(s) active in engine, patches:`,
         nes.gameGenie.patches.map((p) => ({
           addr: "$" + p.addr.toString(16).toUpperCase().padStart(4, "0"),
           val: "$" + p.value.toString(16).toUpperCase().padStart(2, "0"),
@@ -1367,33 +1370,62 @@ class RunPage extends Component {
     this.setState((prev) => {
       const nextOpen = !prev.gameGenieModalOpen;
       if (nextOpen) {
+        if (this.emulator && this.emulator.browser) {
+          this.emulator.browser.stop();
+        }
         return {
           gameGenieModalOpen: true,
           paused: true,
           wasPausedBeforeGameGenieModal: prev.paused,
         };
       } else {
+        const shouldResume = !prev.wasPausedBeforeGameGenieModal;
+        if (shouldResume && this.emulator && this.emulator.browser) {
+          this.emulator.browser.start();
+        }
         return {
           gameGenieModalOpen: false,
-          paused: prev.wasPausedBeforeGameGenieModal || false,
+          paused: !shouldResume,
         };
       }
     });
   };
 
-  handleAddCheatCode = (code, description) => {
+  handleAddCheatCode = (inputCode, description) => {
     if (!this.emulator || !this.emulator.browser || !this.emulator.browser.nes)
       return false;
     const nes = this.emulator.browser.nes;
-    const decoded = nes.gameGenie.decode(code);
-    if (!decoded) return false;
+
+    const tokens = inputCode
+      .split(/[\s+,\/;]+/)
+      .map((t) => t.trim().toUpperCase())
+      .filter((t) => t.length > 0);
+
+    if (tokens.length === 0) return false;
+
+    const decodedList = [];
+    const validCodes = [];
+
+    for (const subCode of tokens) {
+      const decoded = nes.gameGenie.decode(subCode);
+      if (!decoded) {
+        return false;
+      }
+      decodedList.push(decoded);
+      validCodes.push(subCode);
+    }
+
+    const formattedCode = validCodes.join(" + ");
+    const finalDesc = description.trim() || `Code ${formattedCode}`;
 
     const newCodeItem = {
       id: `cheat_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-      code,
-      description,
+      code: formattedCode,
+      rawCodes: validCodes,
+      description: finalDesc,
       active: true,
-      decoded,
+      decodedList: decodedList,
+      decoded: decodedList[0],
     };
 
     const nextCodes = [...this.state.cheatCodes, newCodeItem];

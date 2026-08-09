@@ -52,7 +52,19 @@ export default class KeyboardController {
     }
   };
 
+  isInputTarget = (e) => {
+    if (!e || !e.target) return false;
+    const tag = e.target.tagName;
+    return (
+      tag === "INPUT" ||
+      tag === "TEXTAREA" ||
+      tag === "SELECT" ||
+      e.target.isContentEditable
+    );
+  };
+
   handleKeyDown = (e) => {
+    if (this.isInputTarget(e)) return;
     var key = this.keys[e.keyCode];
     if (key) {
       this.onButtonDown(key[0], key[1]);
@@ -61,6 +73,7 @@ export default class KeyboardController {
   };
 
   handleKeyUp = (e) => {
+    if (this.isInputTarget(e)) return;
     var key = this.keys[e.keyCode];
     if (key) {
       this.onButtonUp(key[0], key[1]);
@@ -69,6 +82,7 @@ export default class KeyboardController {
   };
 
   handleKeyPress = (e) => {
+    if (this.isInputTarget(e)) return;
     if (this.keys[e.keyCode]) {
       e.preventDefault();
     }

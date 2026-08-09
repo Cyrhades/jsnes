@@ -44,11 +44,11 @@ describe("GameGenieModal", () => {
     mockProps.onAddCode.mockReturnValue(true);
     render(<GameGenieModal {...mockProps} />);
 
-    const inputCode = screen.getByPlaceholderText("ex: AAUNYLPA");
+    const inputCode = screen.getByPlaceholderText("ex: LEXVGYAA + ZAVNLGAA");
     const inputDesc = screen.getByPlaceholderText(
-      "ex: Chrono gelé / Vies inf.",
+      "ex: Aller au dernier niveau",
     );
-    const submitBtn = screen.getByText("+ Ajouter le code");
+    const submitBtn = screen.getByText("+ Ajouter le(s) code(s)");
 
     fireEvent.change(inputCode, { target: { value: "XTKYOEZK" } });
     fireEvent.change(inputDesc, { target: { value: "More energy" } });
