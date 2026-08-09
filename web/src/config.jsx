@@ -27,16 +27,9 @@ const config = {
             target="_blank"
             rel="noopener noreferrer"
           >
-            Owlia by Gradual Games
+            The Legends of Owlia
           </a>{" "}
-          /{" "}
-          <a
-            href="http://www.infiniteneslives.com/owlia.php"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Buy the cartridge
-          </a>
+          by Gradual Games
         </span>
       ),
       url: "https://cdn.jsdelivr.net/gh/bfirsh/jsnes-roms@master/owlia.nes",
@@ -50,16 +43,9 @@ const config = {
             target="_blank"
             rel="noopener noreferrer"
           >
-            Monolos by Gradual Games
+          Nomolos
           </a>{" "}
-          /{" "}
-          <a
-            href="http://www.infiniteneslives.com/nomolos.php"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Buy the cartridge
-          </a>
+           by Gradual Games
         </span>
       ),
       url: "https://cdn.jsdelivr.net/gh/bfirsh/jsnes-roms@master/nomolos.nes",
@@ -89,7 +75,7 @@ const config = {
             target="_blank"
             rel="noopener noreferrer"
           >
-            Concentration Room
+            LJ65
           </a>{" "}
           by Damian Yerrick
         </span>
