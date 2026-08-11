@@ -234,11 +234,13 @@ export default class Browser {
       targetRomData = data;
     }
 
+    const batteryRam = options.batteryRam || this._options.batteryRam || null;
+
     // Check if Boot ROM sequence is enabled (default: true)
     const skipBootScreen = options.skipBootScreen || true;
 
     if (skipBootScreen) {
-      this.nes.loadROM(targetRomData);
+      this.nes.loadROM(targetRomData, batteryRam);
       this.start();
     } else {
       // 1. First, load the executable NES Boot ROM into the emulator!
@@ -262,7 +264,7 @@ export default class Browser {
           this._skipBootHandler = null;
         }
         // 2. Load the actual target game ROM into the emulator
-        this.nes.loadROM(targetRomData);
+        this.nes.loadROM(targetRomData, batteryRam);
       };
 
       // Automatically launch target game ROM after 1.5 seconds (~90 frames)

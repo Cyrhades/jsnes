@@ -16,9 +16,11 @@ class ROM {
   constructor(nes) {
     this.nes = nes;
     this.valid = false;
+    this.hasBatteryRam = false;
+    this.batteryRam = null;
   }
 
-  load(data) {
+  load(data, batteryRamData = null) {
     let i, j, v;
 
     // Accept Uint8Array, ArrayBuffer, Buffer, or binary string.
@@ -50,7 +52,7 @@ class ROM {
 
     // Flags from byte 6 (shared between iNES 1.0 and NES 2.0)
     this.mirroring = (this.header[6] & 1) !== 0 ? 1 : 0;
-    this.batteryRam = (this.header[6] & 2) !== 0;
+    this.hasBatteryRam = (this.header[6] & 2) !== 0;
     this.trainer = (this.header[6] & 4) !== 0;
     this.fourScreen = (this.header[6] & 8) !== 0;
 
@@ -64,9 +66,17 @@ class ROM {
       this._loadINES1Header();
     }
 
-    /* TODO
-        if (this.batteryRam)
-            this.loadBatteryRam();*/
+    if (this.prgNvRamSize > 0) {
+      this.hasBatteryRam = true;
+    }
+
+    // Initialize SRAM array (default size 8192 bytes = 8 KB)
+    const ramSize = this.prgNvRamSize || 0x2000;
+    this.batteryRam = new Uint8Array(ramSize);
+
+    if (batteryRamData) {
+      this.setBatteryRamData(batteryRamData);
+    }
 
     // Load PRG-ROM banks:
     this.rom = new Array(this.romCount);
@@ -232,6 +242,34 @@ class ROM {
   static _decodeRamSize(value) {
     if (value === 0) return 0;
     return 64 << value;
+  }
+
+  setBatteryRamData(data) {
+    if (!data) return;
+    let bytes = null;
+    if (data instanceof Uint8Array) {
+      bytes = data;
+    } else if (ArrayBuffer.isView(data)) {
+      bytes = new Uint8Array(data.buffer, data.byteOffset, data.byteLength);
+    } else if (data instanceof ArrayBuffer) {
+      bytes = new Uint8Array(data);
+    } else if (Array.isArray(data)) {
+      bytes = new Uint8Array(data);
+    } else if (typeof data === "string") {
+      bytes = new Uint8Array(data.length);
+      for (let i = 0; i < data.length; i++) {
+        bytes[i] = data.charCodeAt(i) & 0xff;
+      }
+    }
+
+    if (bytes) {
+      if (!this.batteryRam || this.batteryRam.length !== bytes.length) {
+        this.batteryRam = new Uint8Array(bytes.length);
+      }
+      for (let i = 0; i < bytes.length; i++) {
+        this.batteryRam[i] = bytes[i];
+      }
+    }
   }
 
   getMirroringType() {

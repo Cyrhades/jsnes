@@ -9,6 +9,8 @@ export interface BrowserOptions {
   onError?: (error: Error) => void;
   /** Called when battery-backed SRAM is written. */
   onBatteryRamWrite?: (address: number, value: number) => void;
+  /** Initial battery-backed SRAM data to populate ($6000-$7FFF). */
+  batteryRam?: string | number[] | Uint8Array | ArrayBuffer | null;
 }
 
 export class Browser {
@@ -35,7 +37,15 @@ export class Browser {
   /** Pause emulation. */
   stop(): void;
   /** Load a new ROM and start emulation. */
-  loadROM(data: string): void;
+  loadROM(
+    data: string | Uint8Array | ArrayBuffer,
+    options?: {
+      zipIndex?: number;
+      zipFilename?: string;
+      skipBootScreen?: boolean;
+      batteryRam?: string | number[] | Uint8Array | ArrayBuffer | null;
+    },
+  ): void;
   /** Re-layout the canvas to fill its container. */
   fitInParent(): void;
   /** Get a screenshot as an HTMLImageElement. */

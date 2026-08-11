@@ -47,6 +47,7 @@ class RunPage extends Component {
     this.state = {
       romName: null,
       romData: null,
+      batteryRam: null,
       running: false,
       paused: false,
       crtFilter: savedVideoSettings.crtFilter,
@@ -565,9 +566,11 @@ class RunPage extends Component {
               >
                 <Emulator
                   romData={this.state.romData}
+                  batteryRam={this.state.batteryRam}
                   paused={this.state.paused}
                   unlimitedSprites={this.state.unlimitedSprites}
                   onError={this.handleEmulatorError}
+                  onBatteryRamWrite={this.handleBatteryRamWrite}
                   ref={(emulator) => {
                     this.emulator = emulator;
                     if (emulator && !this._cheatsApplied) {
@@ -621,6 +624,15 @@ class RunPage extends Component {
             onSaveSlot={this.saveStateToSlot}
             onLoadSlot={this.loadStateFromSlot}
             onDeleteSlot={this.deleteStateSlot}
+            hasBatteryRam={
+              this.emulator &&
+              this.emulator.browser &&
+              this.emulator.browser.nes
+                ? this.emulator.browser.nes.hasBatteryRam()
+                : false
+            }
+            onExportSram={this.handleExportSram}
+            onImportSram={this.handleImportSram}
           />
 
           {/* Cartridge Info Modal */}
@@ -666,6 +678,7 @@ class RunPage extends Component {
   }
 
   componentWillUnmount() {
+    this.flushSramSave();
     window.removeEventListener("resize", this.layout);
     window.removeEventListener("keydown", this.handleGlobalKeyDown);
     if (this.currentRequest) {
@@ -740,8 +753,111 @@ class RunPage extends Component {
     }
   };
 
+  getSramStorageKey = (name = null) => {
+    const currentName = name || this.state.romName;
+    if (this.props.params.slug) {
+      return `sram-${this.props.params.slug}`;
+    }
+    if (currentName) {
+      return `sram-${currentName.replace(/[^a-zA-Z0-9_-]/g, "_")}`;
+    }
+    return null;
+  };
+
+  loadSramForRom = async (romName) => {
+    const sramKey = this.getSramStorageKey(romName);
+    if (!sramKey) return null;
+    try {
+      const savedSram = await idbGet(sramKey);
+      if (savedSram) {
+        if (typeof savedSram === "string") {
+          try {
+            return JSON.parse(savedSram);
+          } catch {
+            return savedSram;
+          }
+        }
+        return savedSram;
+      }
+    } catch (e) {
+      console.warn("Failed to load SRAM:", e);
+    }
+    return null;
+  };
+
+  handleBatteryRamWrite = () => {
+    if (this.sramSaveTimeout) {
+      clearTimeout(this.sramSaveTimeout);
+    }
+    this.sramSaveTimeout = setTimeout(() => {
+      this.flushSramSave();
+    }, 1000);
+  };
+
+  flushSramSave = () => {
+    if (this.sramSaveTimeout) {
+      clearTimeout(this.sramSaveTimeout);
+      this.sramSaveTimeout = null;
+    }
+    if (
+      !this.emulator ||
+      !this.emulator.browser ||
+      !this.emulator.browser.nes
+    ) {
+      return;
+    }
+    const nes = this.emulator.browser.nes;
+    if (nes.hasBatteryRam()) {
+      const key = this.getSramStorageKey();
+      if (key) {
+        const sramData = nes.getBatteryRam();
+        idbSet(key, Array.from(sramData)).catch((err) =>
+          console.warn("Failed to save SRAM:", err),
+        );
+      }
+    }
+  };
+
+  handleExportSram = () => {
+    if (
+      !this.emulator ||
+      !this.emulator.browser ||
+      !this.emulator.browser.nes
+    ) {
+      return;
+    }
+    const nes = this.emulator.browser.nes;
+    const sram = nes.getBatteryRam();
+    const blob = new Blob([sram], { type: "application/octet-stream" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    const filename = `${(this.state.romName || "game").replace(/\.[^/.]+$/, "")}.sav`;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  handleImportSram = (file) => {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const buffer = e.target.result;
+      const bytes = new Uint8Array(buffer);
+      if (this.emulator && this.emulator.browser && this.emulator.browser.nes) {
+        this.emulator.browser.nes.setBatteryRam(bytes);
+        this.flushSramSave();
+        alert("Sauvegarde SRAM (.sav) importée avec succès !");
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  };
+
   handleLoaded = (data, name) => {
     const zipResult = parseZip(data);
+    const romNameResolved = name || this.state.romName;
 
     if (zipResult.isZip) {
       if (zipResult.type === "none") {
@@ -753,15 +869,19 @@ class RunPage extends Component {
       }
 
       if (zipResult.type === "single") {
-        this.setState(
-          {
-            running: true,
-            loading: false,
-            romData: zipResult.romData,
-            romName: zipResult.name || name || this.state.romName,
-          },
-          () => this.loadCheats(),
-        );
+        const targetName = zipResult.name || romNameResolved;
+        this.loadSramForRom(targetName).then((sram) => {
+          this.setState(
+            {
+              running: true,
+              loading: false,
+              romData: zipResult.romData,
+              batteryRam: sram || null,
+              romName: targetName,
+            },
+            () => this.loadCheats(),
+          );
+        });
         return;
       }
 
@@ -775,29 +895,35 @@ class RunPage extends Component {
       }
     }
 
-    this.setState(
-      {
-        running: true,
-        loading: false,
-        romData: data,
-        romName: name || this.state.romName,
-      },
-      () => this.loadCheats(),
-    );
+    this.loadSramForRom(romNameResolved).then((sram) => {
+      this.setState(
+        {
+          running: true,
+          loading: false,
+          romData: data,
+          batteryRam: sram || null,
+          romName: romNameResolved,
+        },
+        () => this.loadCheats(),
+      );
+    });
   };
 
   handleSelectZipRom = (rom) => {
-    this.setState(
-      {
-        zipModalOpen: false,
-        zipRoms: [],
-        running: true,
-        loading: false,
-        romData: rom.data,
-        romName: rom.name,
-      },
-      () => this.loadCheats(),
-    );
+    this.loadSramForRom(rom.name).then((sram) => {
+      this.setState(
+        {
+          zipModalOpen: false,
+          zipRoms: [],
+          running: true,
+          loading: false,
+          romData: rom.data,
+          batteryRam: sram || null,
+          romName: rom.name,
+        },
+        () => this.loadCheats(),
+      );
+    });
   };
 
   closeZipModal = () => {

@@ -159,12 +159,40 @@ class NES {
     }
   }
 
+  // Returns whether the loaded ROM has battery-backed PRG-RAM (SRAM/EEPROM).
+  hasBatteryRam() {
+    return !!(this.rom && (this.rom.hasBatteryRam || this.rom.batteryRam));
+  }
+
+  // Returns a copy of the battery-backed PRG-RAM ($6000-$7FFF, 8KB) as a Uint8Array.
+  getBatteryRam() {
+    if (!this.cpu || !this.cpu.mem) {
+      return new Uint8Array(0x2000);
+    }
+    return new Uint8Array(this.cpu.mem.slice(0x6000, 0x8000));
+  }
+
+  // Set/load battery-backed PRG-RAM ($6000-$7FFF) into the emulator.
+  setBatteryRam(data) {
+    if (!data) return;
+    if (this.rom) {
+      this.rom.setBatteryRamData(data);
+    }
+    if (this.mmap) {
+      this.mmap.loadBatteryRam();
+    }
+  }
+
+  loadBatteryRam(data) {
+    this.setBatteryRam(data);
+  }
+
   // Loads a ROM file into the CPU and PPU.
   // The ROM file is validated first.
-  loadROM(data) {
+  loadROM(data, batteryRamData = null) {
     // Load ROM file:
     this.rom = new ROM(this);
-    this.rom.load(data);
+    this.rom.load(data, batteryRamData);
 
     this.reset();
     this.mmap = this.rom.createMapper();
@@ -178,6 +206,10 @@ class NES {
 
     this.mmap.loadROM();
     this.romData = data;
+
+    if (batteryRamData) {
+      this.setBatteryRam(batteryRamData);
+    }
   }
 
   setSampleRate(rate) {

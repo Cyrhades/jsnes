@@ -434,9 +434,12 @@ class Mapper0 {
   }
 
   loadBatteryRam() {
-    if (this.nes.rom.batteryRam) {
+    if (
+      this.nes.rom &&
+      (this.nes.rom.hasBatteryRam || this.nes.rom.batteryRam)
+    ) {
       let ram = this.nes.rom.batteryRam;
-      if (ram !== null && ram.length === 0x2000) {
+      if (ram && ram.length >= 0x2000) {
         // Load Battery RAM into memory:
         copyArrayElements(ram, 0, this.nes.cpu.mem, 0x6000, 0x2000);
       }

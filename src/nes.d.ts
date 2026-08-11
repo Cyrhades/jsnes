@@ -31,7 +31,18 @@ export class NES {
   zapperFireUp: () => void;
   getFPS: () => number;
   reloadROM: () => void;
-  loadROM: (data: string | Buffer | Uint8Array | ArrayBuffer) => void;
+  loadROM: (
+    data: string | Buffer | Uint8Array | ArrayBuffer,
+    batteryRamData?: string | number[] | Uint8Array | ArrayBuffer | null,
+  ) => void;
+  hasBatteryRam: () => boolean;
+  getBatteryRam: () => Uint8Array;
+  setBatteryRam: (
+    data: string | number[] | Uint8Array | ArrayBuffer | null,
+  ) => void;
+  loadBatteryRam: (
+    data: string | number[] | Uint8Array | ArrayBuffer | null,
+  ) => void;
   setFramerate: (rate: number) => void;
   setSampleRate: (rate: number) => void;
   toJSON: () => EmulatorData;

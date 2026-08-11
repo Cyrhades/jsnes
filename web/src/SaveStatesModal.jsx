@@ -13,6 +13,9 @@ function SaveStatesModal({
   onSaveSlot,
   onLoadSlot,
   onDeleteSlot,
+  hasBatteryRam,
+  onExportSram,
+  onImportSram,
 }) {
   if (!isOpen) return null;
 
@@ -83,6 +86,60 @@ function SaveStatesModal({
             &times;
           </button>
         </div>
+
+        {/* Battery RAM (SRAM / EEPROM) Section */}
+        {hasBatteryRam && (
+          <div className="mx-6 mt-4 p-3.5 bg-emerald-950/30 border border-emerald-500/30 rounded-xl flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div className="flex items-center space-x-3">
+              <div className="w-8 h-8 rounded-lg bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 shrink-0">
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4a2 2 0 012 2v2M8 7h8m0 0v8a2 2 0 01-2 2H8"
+                  />
+                </svg>
+              </div>
+              <div>
+                <h4 className="text-xs font-bold text-emerald-300">
+                  Sauvegarde Cartouche SRAM / EEPROM
+                </h4>
+                <p className="text-[11px] text-slate-300">
+                  Fichier de sauvegarde d'origine sur pile (.sav).
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center space-x-2 shrink-0">
+              <button
+                type="button"
+                onClick={onExportSram}
+                className="text-xs font-semibold text-emerald-200 bg-emerald-600/30 hover:bg-emerald-600/50 border border-emerald-500/40 px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
+              >
+                Exporter .sav
+              </button>
+              <label className="text-xs font-semibold text-slate-200 bg-slate-800 hover:bg-slate-700 border border-slate-700 px-3 py-1.5 rounded-lg transition-colors cursor-pointer">
+                Importer .sav
+                <input
+                  type="file"
+                  accept=".sav,.ram,.srm"
+                  className="hidden"
+                  onChange={(e) => {
+                    if (e.target.files && e.target.files[0]) {
+                      onImportSram(e.target.files[0]);
+                      e.target.value = "";
+                    }
+                  }}
+                />
+              </label>
+            </div>
+          </div>
+        )}
 
         {/* Content Slots */}
         <div className="p-6 overflow-y-auto space-y-4 flex-1">
@@ -257,6 +314,9 @@ SaveStatesModal.propTypes = {
   onSaveSlot: PropTypes.func.isRequired,
   onLoadSlot: PropTypes.func.isRequired,
   onDeleteSlot: PropTypes.func.isRequired,
+  hasBatteryRam: PropTypes.bool,
+  onExportSram: PropTypes.func,
+  onImportSram: PropTypes.func,
 };
 
 export default SaveStatesModal;

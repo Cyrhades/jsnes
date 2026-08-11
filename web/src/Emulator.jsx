@@ -31,7 +31,9 @@ class Emulator extends Component {
       this.browser = new Browser({
         container: this.container,
         romData: this.props.romData,
+        batteryRam: this.props.batteryRam,
         onError: this.props.onError,
+        onBatteryRamWrite: this.props.onBatteryRamWrite,
       });
       if (
         this.props.unlimitedSprites !== undefined &&

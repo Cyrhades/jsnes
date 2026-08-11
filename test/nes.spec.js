@@ -213,4 +213,87 @@ describe("NES", function () {
       );
     });
   });
+
+  describe("Battery-backed SRAM / EEPROM", function () {
+    function makeBatteryRom() {
+      let header =
+        "NES\x1a" +
+        "\x01" + // 1 PRG bank
+        "\x00" + // 0 CHR bank
+        "\x02" + // Flags 6: Battery-backed RAM (bit 1 = 1)
+        "\x00" +
+        "\x00\x00\x00\x00\x00\x00\x00\x00";
+      let prg = new Uint8Array(16384);
+      // NOP fill + reset vector
+      prg.fill(0xea);
+      prg[0x3fc0] = 0x00;
+      prg[0x3fc1] = 0x80;
+      let buf = new Uint8Array(16 + 16384);
+      for (let i = 0; i < 16; i++) buf[i] = header.charCodeAt(i);
+      buf.set(prg, 16);
+      return buf;
+    }
+
+    it("detects battery RAM flag from ROM header", function () {
+      let nes = new NES();
+      let rom = makeBatteryRom();
+      nes.loadROM(rom);
+      assert.strictEqual(nes.hasBatteryRam(), true);
+    });
+
+    it("allows reading and writing battery RAM via getBatteryRam/setBatteryRam", function () {
+      let nes = new NES();
+      let rom = makeBatteryRom();
+      nes.loadROM(rom);
+
+      let initialSram = nes.getBatteryRam();
+      assert.strictEqual(initialSram.length, 0x2000);
+      assert.strictEqual(initialSram[0], 0);
+
+      let testData = new Uint8Array(0x2000);
+      testData[0] = 0x12;
+      testData[0x100] = 0x34;
+      testData[0x1fff] = 0x56;
+
+      nes.setBatteryRam(testData);
+      let loadedSram = nes.getBatteryRam();
+      assert.strictEqual(loadedSram[0], 0x12);
+      assert.strictEqual(loadedSram[0x100], 0x34);
+      assert.strictEqual(loadedSram[0x1fff], 0x56);
+      assert.strictEqual(nes.cpu.mem[0x6000], 0x12);
+      assert.strictEqual(nes.cpu.mem[0x6100], 0x34);
+      assert.strictEqual(nes.cpu.mem[0x7fff], 0x56);
+    });
+
+    it("calls onBatteryRamWrite callback when writing to SRAM $6000-$7FFF", function () {
+      let writtenAddress = null;
+      let writtenValue = null;
+
+      let nes = new NES({
+        onBatteryRamWrite: (addr, val) => {
+          writtenAddress = addr;
+          writtenValue = val;
+        },
+      });
+
+      let rom = makeBatteryRom();
+      nes.loadROM(rom);
+
+      nes.mmap.write(0x6050, 0x99);
+      assert.strictEqual(writtenAddress, 0x6050);
+      assert.strictEqual(writtenValue, 0x99);
+      assert.strictEqual(nes.cpu.mem[0x6050], 0x99);
+    });
+
+    it("loads battery RAM passed to loadROM()", function () {
+      let nes = new NES();
+      let rom = makeBatteryRom();
+      let sramData = new Uint8Array(0x2000);
+      sramData[10] = 0x77;
+
+      nes.loadROM(rom, sramData);
+      assert.strictEqual(nes.getBatteryRam()[10], 0x77);
+      assert.strictEqual(nes.cpu.mem[0x600a], 0x77);
+    });
+  });
 });
