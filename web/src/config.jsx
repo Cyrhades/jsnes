@@ -43,9 +43,9 @@ const config = {
             target="_blank"
             rel="noopener noreferrer"
           >
-          Nomolos
+            Nomolos
           </a>{" "}
-           by Gradual Games
+          by Gradual Games
         </span>
       ),
       url: "https://cdn.jsdelivr.net/gh/bfirsh/jsnes-roms@master/nomolos.nes",

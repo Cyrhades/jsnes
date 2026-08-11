@@ -645,3 +645,41 @@ describe("MMC5 (Mapper 5)", function () {
     });
   });
 });
+
+describe("Mapper 7 (AxROM / AMROM)", function () {
+  let mapper;
+  let mockNes;
+
+  beforeEach(function () {
+    mockNes = createMockNes();
+    mockNes.rom.subMapper = 0;
+    mockNes.rom.romCount = 8;
+    mockNes.rom.rom = new Array(8).fill(null).map(() => new Uint8Array(16384));
+    mapper = new Mappers[7](mockNes);
+  });
+
+  it("applies bus conflicts when subMapper is 0 or 1", function () {
+    mockNes.cpu.mem[0x8000] = 0x01;
+
+    let lastMirroring = null;
+    mockNes.ppu.setMirroring = (type) => {
+      lastMirroring = type;
+    };
+
+    mapper.write(0x8000, 0x13);
+    assert.strictEqual(lastMirroring, mockNes.rom.SINGLESCREEN_MIRRORING);
+  });
+
+  it("bypasses bus conflicts when subMapper is 2 (ANROM)", function () {
+    mockNes.rom.subMapper = 2;
+    mockNes.cpu.mem[0x8000] = 0x01;
+
+    let lastMirroring = null;
+    mockNes.ppu.setMirroring = (type) => {
+      lastMirroring = type;
+    };
+
+    mapper.write(0x8000, 0x13);
+    assert.strictEqual(lastMirroring, mockNes.rom.SINGLESCREEN_MIRRORING2);
+  });
+});

@@ -10,12 +10,11 @@ import Mapper0 from "./mapper0.js";
 // mirroring is Single Screen Page 0 ($2000). The ROM header mirroring bit is
 // ignored because AxROM always uses mapper-controlled single-screen mirroring.
 //
-// Bus conflicts: AMROM/AOROM boards have bus conflicts (the CPU and ROM drive the
-// data bus simultaneously on writes to $8000-$FFFF). Games written for AMROM
-// ensure that the value written ANDed with the ROM data at the write address
-// produces the desired register value. We do NOT emulate bus conflicts here because
-// the vast majority of games are designed so that value == value & ROM[addr], and
-// emulating bus conflicts is not necessary for correct behavior.
+// Bus conflicts: AMROM/AOROM boards (HVC-AMROM, NES-AMROM, NES-AOROM) have bus conflicts.
+// The CPU and PRG-ROM drive the data bus simultaneously on writes to $8000-$FFFF, so the
+// latch receives (value & ROM[address]). Games like Digger T. Rock (EUR), Battletoads, etc.
+// rely on bus conflicts for correct bank and nametable mirroring selection.
+// ANROM boards (NES 2.0 submapper 2) do not have bus conflicts.
 //
 // See https://www.nesdev.org/wiki/AxROM
 class Mapper7 extends Mapper0 {
@@ -33,6 +32,12 @@ class Mapper7 extends Mapper0 {
       // AxROM register ($8000-$FFFF):
       //   bits 2-0: PRG-ROM bank select (32KB)
       //   bit 4:    nametable page select (0 = page 0/$2000, 1 = page 1/$2400)
+
+      // Emulate bus conflicts for AMROM/AOROM boards (unless submapper 2 / ANROM).
+      if (this.nes.rom.subMapper !== 2) {
+        value &= this.nes.cpu.mem[address];
+      }
+
       this.load32kRomBank(value & 0x7, 0x8000);
       if (value & 0x10) {
         this.nes.ppu.setMirroring(this.nes.rom.SINGLESCREEN_MIRRORING2);
