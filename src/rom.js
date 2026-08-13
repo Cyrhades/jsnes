@@ -163,6 +163,14 @@ class ROM {
     }
     if (foundError) {
       this.mapperType &= 0xf; // Ignore byte 7
+      this.timingMode = 0;
+    } else {
+      // In clean iNES 1.0: Byte 9 bit 0: 0=NTSC, 1=PAL; Byte 10 bits 1..0: 0=NTSC, 2=PAL.
+      if ((this.header[9] & 1) !== 0 || (this.header[10] & 3) === 2) {
+        this.timingMode = 1;
+      } else {
+        this.timingMode = 0;
+      }
     }
 
     this.subMapper = 0;
@@ -170,7 +178,6 @@ class ROM {
     this.prgNvRamSize = 0;
     this.chrRamSize = 0;
     this.chrNvRamSize = 0;
-    this.timingMode = 0;
     this.consoleType = 0;
   }
 
@@ -283,7 +290,7 @@ class ROM {
   }
 
   isPal() {
-    return this.timingMode === 1;
+    return this.timingMode === 1 || this.timingMode === 3;
   }
 
   mapperSupported() {

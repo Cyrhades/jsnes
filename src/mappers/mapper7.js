@@ -14,9 +14,9 @@ import Mapper0 from "./mapper0.js";
 // The CPU and PRG-ROM drive the data bus simultaneously on writes to $8000-$FFFF, so the
 // latch receives (value & ROM[address]). Games like Digger T. Rock (EUR), Battletoads, etc.
 // rely on bus conflicts for correct bank and nametable mirroring selection.
-// ANROM boards (NES 2.0 submapper 2) do not have bus conflicts.
+// ANROM boards (NES 2.0 submapper 1) do not have bus conflicts.
 //
-// See https://www.nesdev.org/wiki/AxROM
+// See https://www.nesdev.org/wiki/AxROM and https://www.nesdev.org/wiki/NES_2.0_submappers
 class Mapper7 extends Mapper0 {
   static mapperName = "AxROM";
 
@@ -33,8 +33,10 @@ class Mapper7 extends Mapper0 {
       //   bits 2-0: PRG-ROM bank select (32KB)
       //   bit 4:    nametable page select (0 = page 0/$2000, 1 = page 1/$2400)
 
-      // Emulate bus conflicts for AMROM/AOROM boards (unless submapper 2 / ANROM).
-      if (this.nes.rom.subMapper !== 2) {
+      // Emulate bus conflicts for AMROM/AOROM boards (unless submapper 1 / ANROM).
+      // NES 2.0 Mapper 7 submappers: 0 = default (with bus conflicts),
+      // 1 = ANROM (no bus conflicts), 2 = AMROM/AOROM (with bus conflicts).
+      if (this.nes.rom.subMapper !== 1) {
         value &= this.nes.cpu.mem[address];
       }
 

@@ -99,7 +99,7 @@ class NES {
           // DMA halt cycles: step PPU per cycle. APU is clocked in bulk.
           let chunk = Math.min(cpu.cyclesToHalt, 8);
           for (let i = 0; i < chunk; i++) {
-            ppu.advanceDots(3);
+            cpu.advancePpuDots();
           }
           papu.clockFrameCounter(chunk);
           cpu.cyclesToHalt -= chunk;
@@ -206,6 +206,13 @@ class NES {
 
     this.mmap.loadROM();
     this.romData = data;
+
+    if (this.rom.isPal()) {
+      this.setFramerate(50.007);
+    } else {
+      this.setFramerate(60.098);
+    }
+    this.papu.resetRegion();
 
     if (batteryRamData) {
       this.setBatteryRam(batteryRamData);

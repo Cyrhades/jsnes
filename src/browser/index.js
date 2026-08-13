@@ -241,6 +241,11 @@ export default class Browser {
 
     if (skipBootScreen) {
       this.nes.loadROM(targetRomData, batteryRam);
+      if (this.nes.rom && this.nes.rom.isPal()) {
+        this._frameTimer.setFrameRate(50.007);
+      } else {
+        this._frameTimer.setFrameRate(60.098);
+      }
       this.start();
     } else {
       // 1. First, load the executable NES Boot ROM into the emulator!
@@ -265,6 +270,11 @@ export default class Browser {
         }
         // 2. Load the actual target game ROM into the emulator
         this.nes.loadROM(targetRomData, batteryRam);
+        if (this.nes.rom && this.nes.rom.isPal()) {
+          this._frameTimer.setFrameRate(50.007);
+        } else {
+          this._frameTimer.setFrameRate(60.098);
+        }
       };
 
       // Automatically launch target game ROM after 1.5 seconds (~90 frames)

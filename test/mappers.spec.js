@@ -658,7 +658,8 @@ describe("Mapper 7 (AxROM / AMROM)", function () {
     mapper = new Mappers[7](mockNes);
   });
 
-  it("applies bus conflicts when subMapper is 0 or 1", function () {
+  it("applies bus conflicts when subMapper is 0 or 2", function () {
+    mockNes.rom.subMapper = 2;
     mockNes.cpu.mem[0x8000] = 0x01;
 
     let lastMirroring = null;
@@ -670,8 +671,8 @@ describe("Mapper 7 (AxROM / AMROM)", function () {
     assert.strictEqual(lastMirroring, mockNes.rom.SINGLESCREEN_MIRRORING);
   });
 
-  it("bypasses bus conflicts when subMapper is 2 (ANROM)", function () {
-    mockNes.rom.subMapper = 2;
+  it("bypasses bus conflicts when subMapper is 1 (ANROM)", function () {
+    mockNes.rom.subMapper = 1;
     mockNes.cpu.mem[0x8000] = 0x01;
 
     let lastMirroring = null;

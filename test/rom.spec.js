@@ -382,7 +382,7 @@ describe("ROM", function () {
       const data = buildHeader({ 4: 1, 5: 0, 6: 0x02, 7: 0x08 });
       const rom = new ROM(mockNes());
       rom.load(data);
-      assert.strictEqual(rom.batteryRam, true);
+      assert.strictEqual(rom.hasBatteryRam, true);
     });
 
     it("parses trainer flag from byte 6 bit 2", function () {
